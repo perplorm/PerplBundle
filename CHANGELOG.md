@@ -3,7 +3,7 @@ Changelog
 
 All notable changes are documented here. The project follows [Semantic Versioning](https://semver.org): minor releases add features and deprecations, major releases remove them.
 
-## 1.0.0 (unreleased)
+## 1.0.0-RC1 (2026-10-18)
 
 First release as PerplBundle, continuing `propel/propel-bundle` and its Symfony 7 forks. See [UPGRADE.md](UPGRADE.md).
 
