@@ -16,13 +16,14 @@ use Psr\Log\LoggerInterface;
 use Psr\Log\LoggerTrait;
 use Symfony\Component\Stopwatch\Stopwatch;
 use Symfony\Component\VarDumper\Caster\TraceStub;
+use Symfony\Contracts\Service\ResetInterface;
 use function count;
 use function debug_backtrace;
 
 /**
  * @author Kévin Gomez <contact@kevingomez.fr>
  */
-class PropelLogger implements LoggerInterface
+class PropelLogger implements LoggerInterface, ResetInterface
 {
     use LoggerTrait;
 
@@ -106,5 +107,16 @@ class PropelLogger implements LoggerInterface
     public function getQueries(): array
     {
         return $this->queries;
+    }
+
+    /**
+     * Forgets the collected queries, between requests of a long-running runtime.
+     *
+     * @return void
+     */
+    public function reset(): void
+    {
+        $this->queries = [];
+        $this->isPrepared = false;
     }
 }

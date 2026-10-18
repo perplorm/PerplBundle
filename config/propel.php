@@ -36,6 +36,7 @@ return static function (ContainerConfigurator $container): void {
             ->public()
             ->args([service('logger')->nullOnInvalid(), service('debug.stopwatch')->nullOnInvalid()])
             ->tag('monolog.logger', ['channel' => 'propel'])
+            ->tag('kernel.reset', ['method' => 'reset'])
 
         ->set('propel.data_collector', '%propel.data_collector.class%')
             ->private()

@@ -41,6 +41,27 @@ class PropelDataCollectorTest extends TestCase
         $this->assertInstanceOf(Data::class, $collector->getQueries());
     }
 
+    public function testResetForgetsTheQueries(): void
+    {
+        $logger = new class extends PropelLogger {
+            public function setQueries(array $queries): void
+            {
+                $this->queries = $queries;
+            }
+        };
+        $logger->setQueries([['sql' => 'SELECT 1', 'connection' => 'default', 'time' => 0.125, 'memory' => 0]]);
+
+        $collector = new PropelDataCollector($logger);
+        $collector->collect(new Request(), new Response());
+        $this->assertSame(1, $collector->getQueryCount());
+
+        $collector->reset();
+        $collector->collect(new Request(), new Response());
+
+        $this->assertSame([], $logger->getQueries());
+        $this->assertSame(0, $collector->getQueryCount());
+    }
+
     public function testCollectWithoutQueries(): void
     {
         $collector = new PropelDataCollector(new PropelLogger());
