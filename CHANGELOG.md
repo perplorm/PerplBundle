@@ -14,4 +14,5 @@ First release as PerplBundle, continuing `propel/propel-bundle` and its Symfony 
 * Configure services in PHP and register commands with `#[AsCommand]`.
 * Follow the current Symfony bundle directory layout.
 * Deprecate `PropelUserProvider::loadUserByUsername()` and passing an options array to `UniqueObject`.
+* Generate the model classes of `config/*schema.xml` schemas under `src/`, like those of `propel/schema.xml`, instead of under a directory named after the namespace.
 * Follow the Perpl coding standard.

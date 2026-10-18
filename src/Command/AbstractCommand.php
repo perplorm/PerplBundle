@@ -13,6 +13,7 @@ declare(strict_types = 1);
 namespace Propel\Bundle\PropelBundle\Command;
 
 use InvalidArgumentException;
+use Propel\Bundle\PropelBundle\AppBundle;
 use Propel\Bundle\PropelBundle\Service\SchemaLocator;
 use ReflectionClass;
 use RuntimeException;
@@ -153,7 +154,7 @@ abstract class AbstractCommand extends Command
                 // This is used to override the package resulting from namespace conversion.
                 $database['package'] = $database['package'];
             } elseif (isset($database['namespace'])) {
-                if ($bundle) {
+                if ($bundle !== null && !$bundle instanceof AppBundle) {
                     $database['package'] = $this->getPackageFromBundle($bundle, (string)$database['namespace']);
                 } else {
                     $database['package'] = $this->getPackageFromApp((string)$database['namespace']);
@@ -190,7 +191,7 @@ abstract class AbstractCommand extends Command
                 if (isset($table['package'])) {
                     $table['package'] = $table['package'];
                 } elseif (isset($table['namespace'])) {
-                    if ($bundle) {
+                    if ($bundle !== null && !$bundle instanceof AppBundle) {
                         $table['package'] = $this->getPackageFromBundle($bundle, (string)$table['namespace']);
                     } else {
                         $table['package'] = $this->getPackageFromApp((string)$table['namespace']);
