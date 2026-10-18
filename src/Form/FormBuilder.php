@@ -5,14 +5,21 @@
  * For the full copyright and license information, please view the LICENSE
  * file that was distributed with this source code.
  *
- * @license    MIT License
+ * @license MIT License
  */
+
+declare(strict_types = 1);
 
 namespace Propel\Bundle\PropelBundle\Form;
 
-use Propel\Generator\Model\ForeignKey;
 use Propel\Generator\Model\Table;
 use Symfony\Component\HttpKernel\Bundle\BundleInterface;
+use function current;
+use function file_get_contents;
+use function lcfirst;
+use function sprintf;
+use function str_replace;
+use function strtolower;
 
 /**
  * @author Moritz Schroeder <moritz.schroeder@molabs.de>
@@ -21,10 +28,10 @@ class FormBuilder
 {
     /**
      * Build a form based on the given table.
-     * 
-     * @param BundleInterface $bundle
-     * @param Table           $table
-     * @param string          $formTypeNamespace
+     *
+     * @param \Symfony\Component\HttpKernel\Bundle\BundleInterface $bundle
+     * @param \Propel\Generator\Model\Table $table
+     * @param string $formTypeNamespace
      *
      * @return string
      */
@@ -45,7 +52,7 @@ class FormBuilder
     /**
      * Build the fields in the FormType.
      *
-     * @param Table $table Table from which the fields will be extracted.
+     * @param \Propel\Generator\Model\Table $table Table from which the fields will be extracted.
      *
      * @return string The FormType code.
      */
@@ -57,10 +64,10 @@ class FormBuilder
                 continue;
             }
             $name = $column->getPhpName();
-            
-            // Use foreignKey table name, so the TypeGuesser gets it right 
+
+            // Use foreignKey table name, so the TypeGuesser gets it right
             if ($column->isForeignKey()) {
-                /** @var ForeignKey $foreignKey */
+                /** @var \Propel\Generator\Model\ForeignKey $foreignKey */
                 $foreignKey = current($column->getForeignKeys());
                 $name = $foreignKey->getForeignTable()->getPhpName();
             }

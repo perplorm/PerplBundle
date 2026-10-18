@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types = 1);
+
 /*
  * This file is part of the Symfony package.
  *
@@ -11,24 +13,26 @@
 
 namespace Propel\Bundle\PropelBundle\Form\Type;
 
+use Propel\Bundle\PropelBundle\Form\EventListener\TranslationCollectionFormListener;
 use Symfony\Component\Form\AbstractType;
 use Symfony\Component\Form\Extension\Core\Type\CollectionType;
-use Symfony\Component\OptionsResolver\Exception\MissingOptionsException;
 use Symfony\Component\Form\FormBuilderInterface;
+use Symfony\Component\OptionsResolver\Exception\MissingOptionsException;
 use Symfony\Component\OptionsResolver\OptionsResolver;
-use Propel\Bundle\PropelBundle\Form\EventListener\TranslationCollectionFormListener;
 
 /**
  * form type for i18n-columns in propel
  *
  * @author Patrick Kaufmann
  *
- * @extends AbstractType<mixed>
+ * @extends \Symfony\Component\Form\AbstractType<mixed>
  */
 class TranslationCollectionType extends AbstractType
 {
     /**
      * {@inheritdoc}
+     *
+     * @throws \Symfony\Component\OptionsResolver\Exception\MissingOptionsException
      */
     public function buildForm(FormBuilderInterface $builder, array $options): void
     {
@@ -48,31 +52,40 @@ class TranslationCollectionType extends AbstractType
      */
     public function configureOptions(OptionsResolver $resolver): void
     {
-        $resolver->setRequired(array(
-            'languages'
-        ));
+        $resolver->setRequired([
+            'languages',
+        ]);
 
-        $resolver->setDefaults(array(
-            'entry_type'    => TranslationType::class,
-            'allow_add'     => false,
-            'allow_delete'  => false,
-            'entry_options' => array(
-                'data_class'    => null,
-                'columns'       => null
-            )
-        ));
+        $resolver->setDefaults([
+            'entry_type' => TranslationType::class,
+            'allow_add' => false,
+            'allow_delete' => false,
+            'entry_options' => [
+                'data_class' => null,
+                'columns' => null,
+            ],
+        ]);
     }
 
+    /**
+     * @return string|null
+     */
     public function getParent(): ?string
     {
         return CollectionType::class;
     }
 
+    /**
+     * @return string
+     */
     public function getBlockPrefix(): string
     {
         return 'propel_translation_collection';
     }
 
+    /**
+     * @return string
+     */
     public function getName(): string
     {
         return $this->getBlockPrefix();

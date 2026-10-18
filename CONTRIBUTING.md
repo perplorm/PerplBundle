@@ -15,7 +15,10 @@ The development dependencies install Perpl:
 composer install
 vendor/bin/phpunit
 vendor/bin/phpstan analyse
+composer cs-check
 ```
+
+The code follows the [Perpl coding standard](https://github.com/perplorm/perpl/blob/main/phpcs.xml); `composer cs-fix` fixes most violations.
 
 To check against Propel2 instead, as CI does:
 

@@ -5,8 +5,10 @@
  * For the full copyright and license information, please view the LICENSE
  * file that was distributed with this source code.
  *
- * @license    MIT License
+ * @license MIT License
  */
+
+declare(strict_types = 1);
 
 namespace Propel\Bundle\PropelBundle\DataFixtures\Dumper;
 
@@ -20,8 +22,10 @@ interface DataDumperInterface
     /**
      * Dumps data to fixtures from a given connection.
      *
-     * @param string|null $filename       The file name to write data.
+     * @param string|null $filename The file name to write data.
      * @param string|null $connectionName The Propel connection name.
+     *
+     * @return void
      */
     public function dump(?string $filename, ?string $connectionName = null): void;
 }

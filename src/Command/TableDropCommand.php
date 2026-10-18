@@ -5,19 +5,27 @@
  * For the full copyright and license information, please view the LICENSE
  * file that was distributed with this source code.
  *
- * @license    MIT License
+ * @license MIT License
  */
+
+declare(strict_types = 1);
 
 namespace Propel\Bundle\PropelBundle\Command;
 
+use InvalidArgumentException;
+use PDO;
 use Propel\Runtime\Adapter\Pdo\MysqlAdapter;
 use Propel\Runtime\Propel;
 use Symfony\Component\Console\Attribute\AsCommand;
-use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
+use function array_search;
+use function array_walk;
+use function count;
+use function implode;
+use function sprintf;
 
 /**
  * @author Kévin Gomez <contact@kevingomez.fr>
@@ -33,14 +41,15 @@ class TableDropCommand extends AbstractCommand
     protected function configure(): void
     {
         $this
-            ->addOption('connection',   null, InputOption::VALUE_OPTIONAL, 'Connection to use. Example: default, bookstore')
-            ->addOption('force',        null, InputOption::VALUE_NONE, 'Set this parameter to execute this action.')
-            ->addArgument('table',      InputArgument::IS_ARRAY, 'Set this parameter to défine which table to delete (default all the table in the database.')
-        ;
+            ->addOption('connection', null, InputOption::VALUE_OPTIONAL, 'Connection to use. Example: default, bookstore')
+            ->addOption('force', null, InputOption::VALUE_NONE, 'Set this parameter to execute this action.')
+            ->addArgument('table', InputArgument::IS_ARRAY, 'Set this parameter to défine which table to delete (default all the table in the database.');
     }
 
     /**
      * {@inheritdoc}
+     *
+     * @throws \InvalidArgumentException
      */
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
@@ -50,29 +59,29 @@ class TableDropCommand extends AbstractCommand
         if (!$adapter instanceof MysqlAdapter) {
             $output->writeln('<error>This command is MySQL only.</error>');
 
-            return \Propel\Generator\Command\AbstractCommand::CODE_ERROR;
+            return self::FAILURE;
         }
 
         if (!$input->getOption('force')) {
             $output->writeln('<error>You have to use the "--force" option to drop some tables.</error>');
 
-            return \Propel\Generator\Command\AbstractCommand::CODE_ERROR;
+            return self::FAILURE;
         }
 
         $tablesToDelete = $input->getArgument('table');
         $nbTable = count($tablesToDelete);
         $tablePlural = (($nbTable > 1 || $nbTable == 0) ? 's' : '' );
 
-        if ('prod' === $this->getKernel()->getEnvironment()) {
+        if ($this->getKernel()->getEnvironment() === 'prod') {
             $count = $nbTable ?: 'all';
 
             $this->writeSection(
                 $output,
                 'WARNING: you are about to drop ' . $count . ' table' . $tablePlural . ' in production !',
-                'bg=red;fg=white'
+                'bg=red;fg=white',
             );
 
-            if (false === $this->askConfirmation($input, $output, 'Are you sure ? (y/n) ', false)) {
+            if ($this->askConfirmation($input, $output, 'Are you sure ? (y/n) ', false) === false) {
                 $output->writeln('<info>Aborted, nice decision !</info>');
 
                 return -2;
@@ -82,12 +91,12 @@ class TableDropCommand extends AbstractCommand
         $showStatement = $connection->prepare('SHOW TABLES;');
         $showStatement->execute();
 
-        $allTables = $showStatement->fetchAll(\PDO::FETCH_COLUMN);
+        $allTables = $showStatement->fetchAll(PDO::FETCH_COLUMN);
 
         if ($nbTable) {
             foreach ($tablesToDelete as $tableToDelete) {
                 if (!array_search($tableToDelete, $allTables)) {
-                    throw new \InvalidArgumentException(sprintf('Table %s doesn\'t exist in the database.', $tableToDelete));
+                    throw new InvalidArgumentException(sprintf('Table %s doesn\'t exist in the database.', $tableToDelete));
                 }
             }
         } else {
@@ -100,9 +109,9 @@ class TableDropCommand extends AbstractCommand
             $table = $dbAdapter->quoteIdentifierTable($table);
         }, $adapter);
 
-        $tablesToDelete = join(', ', $tablesToDelete);
+        $tablesToDelete = implode(', ', $tablesToDelete);
 
-        if ('' !== $tablesToDelete) {
+        if ($tablesToDelete !== '') {
             $connection->exec('DROP TABLE ' . $tablesToDelete . ' ;');
 
             $output->writeln(sprintf('Table' . $tablePlural . ' <info><comment>%s</comment> has been dropped.</info>', $tablesToDelete));
@@ -112,6 +121,6 @@ class TableDropCommand extends AbstractCommand
 
         $connection->exec('SET FOREIGN_KEY_CHECKS = 1;');
 
-        return \Propel\Generator\Command\AbstractCommand::CODE_SUCCESS;
+        return self::SUCCESS;
     }
 }

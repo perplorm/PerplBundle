@@ -5,17 +5,18 @@
  * For the full copyright and license information, please view the LICENSE
  * file that was distributed with this source code.
  *
- * @license    MIT License
+ * @license MIT License
  */
+
+declare(strict_types = 1);
 
 namespace Propel\Bundle\PropelBundle\Command;
 
+use Propel\Generator\Command\GraphvizGenerateCommand as BaseGraphvizGenerateCommand;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
-use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Input\InputInterface;
-
-use Propel\Generator\Command\GraphvizGenerateCommand as BaseGraphvizGenerateCommand;
+use Symfony\Component\Console\Input\InputOption;
 
 /**
  * @author Kévin Gomez <contact@kevingomez.fr>
@@ -31,8 +32,7 @@ class GraphvizGenerateCommand extends WrappedCommand
         parent::configure();
 
         $this
-            ->addOption('output-dir',  null, InputOption::VALUE_REQUIRED,  'The output directory', BaseGraphvizGenerateCommand::DEFAULT_OUTPUT_DIRECTORY)
-        ;
+            ->addOption('output-dir', null, InputOption::VALUE_REQUIRED, 'The output directory', BaseGraphvizGenerateCommand::DEFAULT_OUTPUT_DIRECTORY);
     }
 
     /**
@@ -48,8 +48,8 @@ class GraphvizGenerateCommand extends WrappedCommand
      */
     protected function getSubCommandArguments(InputInterface $input): array
     {
-        return array(
+        return [
             '--output-dir' => $input->getOption('output-dir'),
-        );
+        ];
     }
 }

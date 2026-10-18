@@ -5,8 +5,10 @@
  * For the full copyright and license information, please view the LICENSE
  * file that was distributed with this source code.
  *
- * @license    MIT License
+ * @license MIT License
  */
+
+declare(strict_types = 1);
 
 namespace Propel\Bundle\PropelBundle\Logger;
 
@@ -14,29 +16,36 @@ use Psr\Log\LoggerInterface;
 use Psr\Log\LoggerTrait;
 use Symfony\Component\Stopwatch\Stopwatch;
 use Symfony\Component\VarDumper\Caster\TraceStub;
+use function count;
+use function debug_backtrace;
 
 /**
  * @author Kévin Gomez <contact@kevingomez.fr>
  */
 class PropelLogger implements LoggerInterface
 {
-    protected ?LoggerInterface $logger = null;
-    /** @var array<int, array{sql: string, connection: string, time: int|float, memory: int, trace: TraceStub}>  */
-    protected array $queries = array();
-    protected ?Stopwatch $stopwatch;
-    private bool $isPrepared;
-
     use LoggerTrait;
+
+    protected ?LoggerInterface $logger = null;
+
+    /**
+     * @var array<int, array{sql: string, connection: string, time: int|float, memory: int, trace: \Symfony\Component\VarDumper\Caster\TraceStub}>
+     */
+    protected array $queries = [];
+
+    protected ?Stopwatch $stopwatch;
+
+    private bool $isPrepared;
 
     /**
      * Constructor.
      *
-     * @param LoggerInterface $logger    A LoggerInterface instance
-     * @param Stopwatch       $stopwatch A Stopwatch instance
+     * @param \Psr\Log\LoggerInterface|null $logger A LoggerInterface instance
+     * @param \Symfony\Component\Stopwatch\Stopwatch|null $stopwatch A Stopwatch instance
      */
     public function __construct(?LoggerInterface $logger = null, ?Stopwatch $stopwatch = null)
     {
-        $this->logger    = $logger;
+        $this->logger = $logger;
         $this->stopwatch = $stopwatch;
         $this->isPrepared = false;
     }
@@ -44,24 +53,27 @@ class PropelLogger implements LoggerInterface
     /**
      * Logs with an arbitrary level.
      *
-     * @param  mixed  $level
-     * @param  string $message
-     * @param  array<mixed>  $context
+     * @param mixed $level
+     * @param string $message
+     * @param array<mixed> $context
+     *
+     * @return void
      */
-    public function log($level, $message, array $context = array()): void
+    public function log($level, $message, array $context = []): void
     {
-        if (null === $this->logger) {
+        if ($this->logger === null) {
             return;
         }
 
         $add = true;
+        $event = null;
         $trace = debug_backtrace();
 
-        if (null !== $this->stopwatch) {
+        if ($this->stopwatch !== null) {
             $method = $trace[3]['function'];
 
-            $watch = 'Propel Query '.(count($this->queries)+1);
-            if ('prepare' === $method) {
+            $watch = 'Propel Query ' . (count($this->queries) + 1);
+            if ($method === 'prepare') {
                 $this->isPrepared = true;
                 $this->stopwatch->start($watch, 'propel');
 
@@ -73,23 +85,23 @@ class PropelLogger implements LoggerInterface
         }
 
         // $trace[2] has no 'object' key if an exception is thrown while executing a query
-        if ($add && isset($event) && isset($trace[2]['object'])) {
+        if ($add && $event !== null && isset($trace[2]['object'])) {
             $connection = $trace[2]['object'];
 
-            $this->queries[] = array(
-                'sql'           => $message,
-                'connection'    => $connection->getName(),
-                'time'          => $event->getDuration() / 1000,
-                'memory'        => $event->getMemory(),
-                'trace'         => new TraceStub($trace),
-            );
+            $this->queries[] = [
+                'sql' => $message,
+                'connection' => $connection->getName(),
+                'time' => $event->getDuration() / 1000,
+                'memory' => $event->getMemory(),
+                'trace' => new TraceStub($trace),
+            ];
         }
 
         $this->logger->log($level, $message, $context);
     }
 
     /**
-     * @return array<int, array{sql: string, connection: string, time: int|float, memory: int, trace: TraceStub}>
+     * @return array<int, array{sql: string, connection: string, time: int|float, memory: int, trace: \Symfony\Component\VarDumper\Caster\TraceStub}>
      */
     public function getQueries(): array
     {

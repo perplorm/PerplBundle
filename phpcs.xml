@@ -1,0 +1,56 @@
+<?xml version="1.0"?>
+<ruleset name="PerplBundle">
+    <description>
+        The Perpl coding standard (https://github.com/perplorm/perpl/blob/main/phpcs.xml), which extends the Spryker Coding Standard.
+    </description>
+
+    <config name="installed_paths" value="../../spryker/code-sniffer"/>
+
+    <arg value="nps"/>
+
+    <file>src/</file>
+    <file>config/</file>
+
+    <rule ref="SprykerStrict">
+        <exclude name="SprykerStrict.TypeHints.ParameterTypeHint"/>
+        <exclude name="SprykerStrict.TypeHints.PropertyTypeHint"/>
+        <exclude name="SprykerStrict.TypeHints.ReturnTypeHint"/>
+        <exclude name="Spryker.Internal.SprykerBridge"/>
+        <exclude name="Spryker.Internal.SprykerFacade"/>
+        <exclude name="Spryker.Internal.SprykerNoDemoshop"/>
+        <exclude name="Spryker.Internal.SprykerPreferStaticOverSelf"/>
+        <exclude name="Spryker.Commenting.DocBlockApiAnnotation"/> <!-- Another Spryker internal function. -->
+        <exclude name="Spryker.Commenting.DocBlockReturnSelf.InvalidChainable"/> <!-- methods with "@return $this" must end with "return $this", but cannot return $this through another method -->
+        <exclude name="Spryker.Commenting.DocBlockParamAllowDefaultValue.Typehint"/> <!-- fails to recognize array shapes (like `array{int, string})`-->
+        <exclude name="Spryker.Commenting.DocBlockParamAllowDefaultValue.WrongNullable"/> <!-- Checks for null as '?' (?string) but not '|null' (string|null) in spryker/code-sniffer 0.17.30 -->
+        <exclude name="Spryker.Classes.ReturnTypeHint.InvalidSelf"/> <!-- Prohibits return type hint for @return $this -->
+        <exclude name="SlevomatCodingStandard.TypeHints.UnionTypeHintFormat"/> <!-- Deprecated but still loaded in spryker 0.17.36 -->
+        <!-- Unlike Perpl, the files keep the copyright headers and author tags of PropelBundle and the Symfony Propel1 bridge they come from -->
+        <exclude name="Spryker.Commenting.FileDocBlock"/>
+        <exclude name="SlevomatCodingStandard.Commenting.ForbiddenAnnotations"/>
+        <!-- Symfony attributes are imported, as in the Symfony documentation -->
+        <exclude name="Spryker.Commenting.Attributes"/>
+    </rule>
+
+    <rule ref="SlevomatCodingStandard.TypeHints.DNFTypeHintFormat"> <!-- Replaces deprecated SlevomatCodingStandard.TypeHints.UnionTypeHintFormat -->
+        <properties>
+            <property name="withSpacesAroundOperators" value="no"/>
+        </properties>
+    </rule>
+
+    <rule ref="Spryker.Internal.SprykerDisallowFunctions">
+        <properties>
+            <!-- running this rule without phpVersion doubles runtime (in spryker/code-sniffer 0.17.30) -->
+            <property name="phpVersion" value="8.2"/>
+        </properties>
+    </rule>
+
+    <rule ref="SlevomatCodingStandard.TypeHints.DeclareStrictTypes"/>
+
+    <rule ref="SlevomatCodingStandard.Namespaces.ReferenceUsedNamesOnly" >
+        <properties>
+            <property name="allowFallbackGlobalFunctions" value="false"/>
+            <property name="allowFallbackGlobalConstants" value="false"/>
+        </properties>
+    </rule>
+</ruleset>

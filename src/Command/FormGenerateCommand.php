@@ -5,18 +5,20 @@
  * For the full copyright and license information, please view the LICENSE
  * file that was distributed with this source code.
  *
- * @license    MIT License
+ * @license MIT License
  */
+
+declare(strict_types = 1);
 
 namespace Propel\Bundle\PropelBundle\Command;
 
 use Propel\Bundle\PropelBundle\AppBundle;
 use Propel\Bundle\PropelBundle\Form\FormBuilder;
 use Propel\Generator\Config\GeneratorConfig;
+use Propel\Generator\Manager\ModelManager;
 use Propel\Generator\Model\Database;
 use Propel\Generator\Model\Table;
-use Propel\Generator\Manager\ModelManager;
-
+use SplFileInfo as NativeSplFileInfo;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
@@ -25,6 +27,15 @@ use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Filesystem\Filesystem;
 use Symfony\Component\Finder\SplFileInfo;
 use Symfony\Component\HttpKernel\Bundle\BundleInterface;
+use function count;
+use function file_exists;
+use function file_put_contents;
+use function in_array;
+use function realpath;
+use function sprintf;
+use function str_replace;
+use function substr;
+use const DIRECTORY_SEPARATOR;
 
 /**
  * @author William DURAND <william.durand1@gmail.com>
@@ -32,9 +43,12 @@ use Symfony\Component\HttpKernel\Bundle\BundleInterface;
 #[AsCommand(name: 'propel:form:generate', description: 'Generate Form types stubs based on the schema.xml')]
 class FormGenerateCommand extends AbstractCommand
 {
-    const DEFAULT_FORM_TYPE_DIRECTORY = '/Form/Type';
-    
     use BundleTrait;
+
+    /**
+     * @var string
+     */
+    public const DEFAULT_FORM_TYPE_DIRECTORY = '/Form/Type';
 
     /**
      * {@inheritdoc}
@@ -43,7 +57,7 @@ class FormGenerateCommand extends AbstractCommand
     {
         $this
             ->addOption('force', 'f', InputOption::VALUE_NONE, 'Overwrite existing Form types')
-            ->addOption('platform',  null, InputOption::VALUE_REQUIRED,  'The platform')
+            ->addOption('platform', null, InputOption::VALUE_REQUIRED, 'The platform')
             ->addArgument('bundle', InputArgument::OPTIONAL, 'The bundle to use to generate Form types (Ex: @AcmeDemoBundle)')
             ->addArgument('models', InputArgument::IS_ARRAY, 'Model classes to generate Form Types from')
 
@@ -53,8 +67,7 @@ The <info>%command.name%</info> command allows you to quickly generate Form Type
 <info>php app/console %command.full_name%</info>
 
 The <info>--force</info> parameter allows you to overwrite existing files.
-EOT
-        );
+EOT);
     }
 
     /**
@@ -74,7 +87,7 @@ EOT
         if (!$schemas) {
             $output->writeln(sprintf('No <comment>*schemas.xml</comment> files found in bundle <comment>%s</comment>.', $bundle->getName()));
 
-            return \Propel\Generator\Command\AbstractCommand::CODE_ERROR;
+            return self::FAILURE;
         }
 
         $manager = $this->getModelManager($input, $schemas);
@@ -85,20 +98,27 @@ EOT
             }
         }
 
-        return \Propel\Generator\Command\AbstractCommand::CODE_SUCCESS;
+        return self::SUCCESS;
     }
 
     /**
      * Create FormTypes from a given database, bundle and models.
      *
-     * @param BundleInterface $bundle   The bundle for which the FormTypes will be generated.
-     * @param Database        $database The database to inspect.
-     * @param string[]        $models   The models to build.
-     * @param OutputInterface $output   An OutputInterface instance
-     * @param boolean         $force    Override files if present.
+     * @param \Symfony\Component\HttpKernel\Bundle\BundleInterface $bundle The bundle for which the FormTypes will be generated.
+     * @param \Propel\Generator\Model\Database $database The database to inspect.
+     * @param array<string> $models The models to build.
+     * @param \Symfony\Component\Console\Output\OutputInterface $output An OutputInterface instance
+     * @param bool $force Override files if present.
+     *
+     * @return void
      */
-    protected function createFormTypeFromDatabase(BundleInterface $bundle, Database $database, array $models, OutputInterface $output, bool $force = false): void
-    {
+    protected function createFormTypeFromDatabase(
+        BundleInterface $bundle,
+        Database $database,
+        array $models,
+        OutputInterface $output,
+        bool $force = false
+    ): void {
         $dir = $this->createDirectory($bundle, $output);
 
         foreach ($database->getTables() as $table) {
@@ -106,9 +126,9 @@ EOT
                 continue;
             }
 
-            $file = new \SplFileInfo(sprintf('%s/%sType.php', $dir, $table->getPhpName()));
+            $file = new NativeSplFileInfo(sprintf('%s/%sType.php', $dir, $table->getPhpName()));
 
-            if (!file_exists($file) || true === $force) {
+            if (!file_exists($file->getPathname()) || $force === true) {
                 $this->writeFormType($bundle, $table, $file, $force, $output);
             } else {
                 $output->writeln(sprintf('File <comment>%-60s</comment> exists, skipped. Try the <info>--force</info> option.', $this->getRelativeFileName($file)));
@@ -119,8 +139,8 @@ EOT
     /**
      * Create the FormType directory and log the result.
      *
-     * @param BundleInterface $bundle The bundle in which we'll create the directory.
-     * @param OutputInterface $output An OutputInterface instance.
+     * @param \Symfony\Component\HttpKernel\Bundle\BundleInterface $bundle The bundle in which we'll create the directory.
+     * @param \Symfony\Component\Console\Output\OutputInterface $output An OutputInterface instance.
      *
      * @return string The path to the created directory.
      */
@@ -145,13 +165,15 @@ EOT
     /**
      * Write a FormType.
      *
-     * @param BundleInterface $bundle The bundle in which the FormType will be created.
-     * @param Table           $table  The table for which the FormType will be created.
-     * @param \SplFileInfo    $file   File representing the FormType.
-     * @param boolean         $force  Is the write forced?
-     * @param OutputInterface $output An OutputInterface instance.
+     * @param \Symfony\Component\HttpKernel\Bundle\BundleInterface $bundle The bundle in which the FormType will be created.
+     * @param \Propel\Generator\Model\Table $table The table for which the FormType will be created.
+     * @param \SplFileInfo $file File representing the FormType.
+     * @param bool $force Is the write forced?
+     * @param \Symfony\Component\Console\Output\OutputInterface $output An OutputInterface instance.
+     *
+     * @return void
      */
-    protected function writeFormType(BundleInterface $bundle, Table $table, \SplFileInfo $file, bool $force, OutputInterface $output): void
+    protected function writeFormType(BundleInterface $bundle, Table $table, NativeSplFileInfo $file, bool $force, OutputInterface $output): void
     {
         $formBuilder = new FormBuilder();
         $formTypeContent = $formBuilder->buildFormType($bundle, $table, self::DEFAULT_FORM_TYPE_DIRECTORY);
@@ -161,43 +183,44 @@ EOT
     }
 
     /**
-     * @param  \SplFileInfo $file
+     * @param \SplFileInfo $file
+     *
      * @return string
      */
-    protected function getRelativeFileName(\SplFileInfo $file): string
+    protected function getRelativeFileName(NativeSplFileInfo $file): string
     {
-        return substr(str_replace(realpath($this->getContainer()->getParameter('kernel.project_dir') . '/../'), '', $file), 1);
+        return substr(str_replace(realpath($this->getContainer()->getParameter('kernel.project_dir') . '/../'), '', $file->getPathname()), 1);
     }
 
     /**
      * Get the GeneratorConfig instance to use.
      *
-     * @param InputInterface $input An InputInterface instance.
+     * @param \Symfony\Component\Console\Input\InputInterface $input An InputInterface instance.
      *
-     * @return GeneratorConfig
+     * @return \Propel\Generator\Config\GeneratorConfig
      */
     protected function getGeneratorConfig(InputInterface $input): GeneratorConfig
     {
         $generatorConfig = null;
 
-        if (null !== $input->getOption('platform')) {
+        if ($input->getOption('platform') !== null) {
             $generatorConfig['propel']['generator']['platformClass'] = $input->getOption('platform');
         }
 
-        return new GeneratorConfig($this->getCacheDir().'/propel.json', $generatorConfig);
+        return new GeneratorConfig($this->getCacheDir() . '/propel.json', $generatorConfig);
     }
 
     /**
      * Get the ModelManager to use.
      *
-     * @param InputInterface                                       $input   An InputInterface instance.
-     * @param array<string, array{?BundleInterface, \SplFileInfo}> $schemas A list of schemas.
+     * @param \Symfony\Component\Console\Input\InputInterface $input An InputInterface instance.
+     * @param array<string, array{?\Symfony\Component\HttpKernel\Bundle\BundleInterface, \SplFileInfo}> $schemas A list of schemas.
      *
-     * @return ModelManager
+     * @return \Propel\Generator\Manager\ModelManager
      */
     protected function getModelManager(InputInterface $input, array $schemas): ModelManager
     {
-        $schemaFiles = array();
+        $schemaFiles = [];
         foreach ($schemas as $data) {
             $schemaFiles[] = new SplFileInfo($data[1]->getPathname(), '', $data[1]->getFilename());
         }

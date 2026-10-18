@@ -5,36 +5,69 @@
  * For the full copyright and license information, please view the LICENSE
  * file that was distributed with this source code.
  *
- * @license    MIT License
+ * @license MIT License
  */
+
+declare(strict_types = 1);
 
 namespace Propel\Bundle\PropelBundle\Command;
 
+use InvalidArgumentException;
 use Propel\Bundle\PropelBundle\Service\SchemaLocator;
-use Symfony\Bundle\FrameworkBundle\Console\Application;
+use ReflectionClass;
+use RuntimeException;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\ArrayInput;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\Filesystem\Filesystem;
-use Symfony\Component\HttpKernel\Bundle\Bundle;
 use Symfony\Component\HttpKernel\Bundle\BundleInterface;
 use Symfony\Component\HttpKernel\KernelInterface;
+use function array_merge;
+use function array_unshift;
+use function explode;
+use function file_put_contents;
+use function implode;
+use function in_array;
+use function json_encode;
+use function key;
+use function preg_match;
+use function realpath;
+use function simplexml_load_file;
+use function sprintf;
+use function str_replace;
+use function stripos;
+use function strlen;
+use function strpos;
+use function strrpos;
+use function substr;
+use function trim;
+use function urlencode;
+use const DIRECTORY_SEPARATOR;
+use const JSON_PRETTY_PRINT;
 
 /**
  * @author Kévin Gomez <contact@kevingomez.fr>
  */
 abstract class AbstractCommand extends Command
 {
-    protected ?string $cacheDir = null;
-    protected ?BundleInterface $bundle = null;
-    protected InputInterface $input;
-    protected OutputInterface $output;
-    private ContainerInterface $container;
-
     use FormattingHelpers;
 
+    protected ?string $cacheDir = null;
+
+    protected ?BundleInterface $bundle = null;
+
+    protected InputInterface $input;
+
+    protected OutputInterface $output;
+
+    private ContainerInterface $container;
+
+    /**
+     * @param \Symfony\Component\DependencyInjection\ContainerInterface $container
+     * @param string|null $name
+     */
     public function __construct(ContainerInterface $container, $name = null)
     {
         $this->container = $container;
@@ -49,9 +82,9 @@ abstract class AbstractCommand extends Command
     {
         $this->input = $input;
         $this->output = $output;
-        $this->cacheDir = $this->getKernel()->getCacheDir().'/propel';
+        $this->cacheDir = $this->getKernel()->getCacheDir() . '/propel';
 
-        if ($input->hasArgument('bundle') && !empty($input->getArgument('bundle')) && '@' === substr($input->getArgument('bundle'), 0, 1)) {
+        if ($input->hasArgument('bundle') && !empty($input->getArgument('bundle')) && substr($input->getArgument('bundle'), 0, 1) === '@') {
             $this->bundle = $this
                 ->getContainer()
                 ->get('kernel')
@@ -59,6 +92,9 @@ abstract class AbstractCommand extends Command
         }
     }
 
+    /**
+     * @return \Symfony\Component\DependencyInjection\ContainerInterface
+     */
     public function getContainer(): ContainerInterface
     {
         return $this->container;
@@ -66,6 +102,8 @@ abstract class AbstractCommand extends Command
 
     /**
      * Create all the files needed by Propel's commands.
+     *
+     * @return void
      */
     protected function setupBuildTimeFiles(): void
     {
@@ -76,30 +114,34 @@ abstract class AbstractCommand extends Command
         $this->copySchemas($this->getKernel(), $this->cacheDir);
 
         // propel.json
-        $this->createPropelConfigurationFile($this->cacheDir.'/propel.json');
+        $this->createPropelConfigurationFile($this->cacheDir . '/propel.json');
     }
 
     /**
-     * @param KernelInterface $kernel   The application kernel.
-     * @param string          $cacheDir The directory in which the schemas will
+     * @param \Symfony\Component\HttpKernel\KernelInterface $kernel The application kernel.
+     * @param string $cacheDir The directory in which the schemas will
      *                                  be copied.
+     *
+     * @throws \RuntimeException
+     *
+     * @return void
      */
     protected function copySchemas(KernelInterface $kernel, string $cacheDir): void
     {
         $filesystem = new Filesystem();
 
-        /** @var array<string, array{?BundleInterface, \SplFileInfo}> $finalSchemas */
+        /** @var array<string, array{?\Symfony\Component\HttpKernel\Bundle\BundleInterface, \SplFileInfo}> $finalSchemas */
         $finalSchemas = $this->getFinalSchemas($kernel, $this->bundle);
         foreach ($finalSchemas as $schema) {
-            list($bundle, $finalSchema) = $schema;
+            [$bundle, $finalSchema] = $schema;
 
             if ($bundle) {
-                $file = $cacheDir.DIRECTORY_SEPARATOR.'bundle-'.$bundle->getName().'-'.$finalSchema->getBaseName();
+                $file = $cacheDir . DIRECTORY_SEPARATOR . 'bundle-' . $bundle->getName() . '-' . $finalSchema->getBaseName();
             } else {
-                $file = $cacheDir.DIRECTORY_SEPARATOR.'app-'.$finalSchema->getBaseName();
+                $file = $cacheDir . DIRECTORY_SEPARATOR . 'app-' . $finalSchema->getBaseName();
             }
 
-            $filesystem->copy((string) $finalSchema, $file, true);
+            $filesystem->copy((string)$finalSchema, $file, true);
 
             // the package needs to be set absolute
             // besides, the automated namespace to package conversion has
@@ -117,19 +159,19 @@ abstract class AbstractCommand extends Command
                     $database['package'] = $this->getPackageFromApp((string)$database['namespace']);
                 }
             } else {
-                throw new \RuntimeException(
+                throw new RuntimeException(
                     sprintf(
                         '%s : Please define a `package` attribute or a `namespace` attribute for schema `%s`',
                         $bundle ? $bundle->getName() : 'App',
-                        $finalSchema->getBaseName()
-                    )
+                        $finalSchema->getBaseName(),
+                    ),
                 );
             }
 
             if ($this->input->hasOption('connection')) {
-                $connections = $this->input->getOption('connection') ?: array($this->getDefaultConnection());
+                $connections = $this->input->getOption('connection') ?: [$this->getDefaultConnection()];
 
-                if (!in_array((string) $database['name'], $connections)) {
+                if (!in_array((string)$database['name'], $connections)) {
                     // we skip this schema because the connection name doesn't
                     // match the input values
                     $filesystem->remove($file);
@@ -137,8 +179,9 @@ abstract class AbstractCommand extends Command
                         '<info>Skipped schema %s due to database name missmatch (%s not in [%s]).</info>',
                         $finalSchema->getPathname(),
                         $database['name'],
-                        implode(',', $connections)
+                        implode(',', $connections),
                     ));
+
                     continue;
                 }
             }
@@ -164,15 +207,15 @@ abstract class AbstractCommand extends Command
     /**
      * Return a list of final schema files that will be processed.
      *
-     * @param KernelInterface      $kernel The application kernel.
-     * @param BundleInterface|null $bundle If given, only the bundle's schemas will
+     * @param \Symfony\Component\HttpKernel\KernelInterface $kernel The application kernel.
+     * @param \Symfony\Component\HttpKernel\Bundle\BundleInterface|null $bundle If given, only the bundle's schemas will
      *                                     be returned.
      *
-     * @return array<string, array{?BundleInterface, \SplFileInfo}> A list of schemas.
+     * @return array<string, array{?\Symfony\Component\HttpKernel\Bundle\BundleInterface, \SplFileInfo}> A list of schemas.
      */
     protected function getFinalSchemas(KernelInterface $kernel, ?BundleInterface $bundle = null): array
     {
-        if (null !== $bundle) {
+        if ($bundle !== null) {
             return $this->getSchemaLocator()->locateFromBundle($bundle);
         }
 
@@ -182,14 +225,12 @@ abstract class AbstractCommand extends Command
     /**
      * Run a Symfony command.
      *
-     * @param Command              $command    The command to run.
+     * @param \Symfony\Component\Console\Command\Command $command The command to run.
      * @param array<string, mixed> $parameters An array of parameters to give to the command.
-     * @param InputInterface       $input      An InputInterface instance
-     * @param OutputInterface      $output     An OutputInterface instance
+     * @param \Symfony\Component\Console\Input\InputInterface $input An InputInterface instance
+     * @param \Symfony\Component\Console\Output\OutputInterface $output An OutputInterface instance
      *
      * @return int The command return code.
-     *
-     * @throws \Symfony\Component\Console\Exception\ExceptionInterface
      */
     protected function runCommand(Command $command, array $parameters, InputInterface $input, OutputInterface $output): int
     {
@@ -198,7 +239,7 @@ abstract class AbstractCommand extends Command
 
         // merge the default parameters
         $extraParameters = [
-            '--verbose' => $input->getOption('verbose')
+            '--verbose' => $input->getOption('verbose'),
         ];
 
         if ($command->getDefinition()->hasOption('schema-dir')) {
@@ -216,7 +257,8 @@ abstract class AbstractCommand extends Command
         $parameters = array_merge($extraParameters, $parameters);
 
         if ($input->hasOption('platform')) {
-            if ($platform = $input->getOption('platform') ?: $this->getPlatform()) {
+            $platform = $input->getOption('platform') ?: $this->getPlatform();
+            if ($platform) {
                 $parameters['--platform'] = $platform;
             }
         }
@@ -231,6 +273,8 @@ abstract class AbstractCommand extends Command
      * Create an XML file which represents propel.configuration
      *
      * @param string $file Should be 'propel.json'.
+     *
+     * @return void
      */
     protected function createPropelConfigurationFile(string $file): void
     {
@@ -240,9 +284,9 @@ abstract class AbstractCommand extends Command
         //propel.runtime.logging is PropelBundle feature only.
         unset($propelConfig['runtime']['logging']);
 
-        $config = array(
-            'propel' => $propelConfig
-        );
+        $config = [
+            'propel' => $propelConfig,
+        ];
 
         file_put_contents($file, json_encode($config, JSON_PRETTY_PRINT));
     }
@@ -250,13 +294,13 @@ abstract class AbstractCommand extends Command
     /**
      * Translates a list of connection names to their DSN equivalents.
      *
-     * @param string[] $connections The names.
+     * @param array<string> $connections The names.
      *
-     * @return string[]
+     * @return array<string>
      */
     protected function getConnections(array $connections): array
     {
-        $dsnList = array();
+        $dsnList = [];
         foreach ($connections as $connection) {
             $dsnList[] = sprintf('%s=%s', $connection, $this->getDsn($connection));
         }
@@ -269,13 +313,15 @@ abstract class AbstractCommand extends Command
      *
      * @param string $name The connection name.
      *
+     * @throws \InvalidArgumentException
+     *
      * @return array<string, mixed> The connection data.
      */
     protected function getConnectionData(string $name): array
     {
         $knownConnections = $this->getConfig();
         if (!isset($knownConnections['database']['connections'][$name])) {
-            throw new \InvalidArgumentException(sprintf('Unknown connection "%s"', $name));
+            throw new InvalidArgumentException(sprintf('Unknown connection "%s"', $name));
         }
 
         return $knownConnections['database']['connections'][$name];
@@ -304,11 +350,11 @@ abstract class AbstractCommand extends Command
     }
 
     /**
-     * @return SchemaLocator
+     * @return \Propel\Bundle\PropelBundle\Service\SchemaLocator
      */
     protected function getSchemaLocator(): SchemaLocator
     {
-        /** @var SchemaLocator $obj */
+        /** @var \Propel\Bundle\PropelBundle\Service\SchemaLocator $obj */
         $obj = $this->getContainer()->get('propel.schema_locator');
 
         return $obj;
@@ -321,19 +367,19 @@ abstract class AbstractCommand extends Command
      */
     protected function getPackageFromApp(string $namespace): string
     {
-        if ('\\' === $namespace[0]) {
+        if ($namespace[0] === '\\') {
             $namespace = substr($namespace, 1);
         }
 
-        if (0 === stripos($namespace, 'App\\')) {
+        if (stripos($namespace, 'App\\') === 0) {
             $namespace = substr($namespace, 4);
         }
 
-        return 'src.'.str_replace('\\', '.', $namespace);
+        return 'src.' . str_replace('\\', '.', $namespace);
     }
 
     /**
-     * @param BundleInterface $bundle
+     * @param \Symfony\Component\HttpKernel\Bundle\BundleInterface $bundle
      * @param string $namespace
      *
      * @return string
@@ -341,8 +387,8 @@ abstract class AbstractCommand extends Command
     protected function getPackageFromBundle(BundleInterface $bundle, string $namespace): string
     {
         //find relative path from namespace to bundle->getNamespace()
-        $baseNamespace = (new \ReflectionClass($bundle))->getNamespaceName();
-        if (0 === strpos($namespace, $baseNamespace)) {
+        $baseNamespace = (new ReflectionClass($bundle))->getNamespaceName();
+        if (strpos($namespace, $baseNamespace) === 0) {
             //base namespace fits
             //eg.
             //  Base: Jarves/JarvesBundle => Jarves
@@ -361,7 +407,7 @@ abstract class AbstractCommand extends Command
         }
 
         //does not match or its a absolute path, so return it without suffix
-        if ('\\' === $namespace[0]) {
+        if ($namespace[0] === '\\') {
             $namespace = substr($namespace, 1);
         }
 
@@ -391,24 +437,25 @@ abstract class AbstractCommand extends Command
         $from = '/' . trim($from, '/');
         $to = '/' . trim($to, '/');
 
-        if (0 === $pos = strpos($from, $to)) {
-            return substr($from, strlen($to) + ('/' === $to ? 0 : 1));
+        if (strpos($from, $to) === 0) {
+            return substr($from, strlen($to) + ($to === '/' ? 0 : 1));
         }
 
         $result = '';
-        while ($to && false === strpos($from, $to)) {
+        while ($to && strpos($from, $to) === false) {
             $result .= '../';
             $to = substr($to, 0, strrpos($to, '/'));
         }
 
-        return !$to /*we reached root*/ ? $result . substr($from, 1) : $result. substr($from, strlen($to) + 1);
+        return !$to /*we reached root*/ ? $result . substr($from, 1) : $result . substr($from, strlen($to) + 1);
     }
 
     /**
      * Extract the database name from a given DSN
      *
      * @param string $dsn A DSN
-     * @return ?string The database name extracted from the given DSN
+     *
+     * @return string|null The database name extracted from the given DSN
      */
     protected function parseDbName(string $dsn): ?string
     {
@@ -458,9 +505,12 @@ abstract class AbstractCommand extends Command
         return $config['generator']['platformClass'];
     }
 
+    /**
+     * @return \Symfony\Component\HttpKernel\KernelInterface
+     */
     protected function getKernel(): KernelInterface
     {
-        /** @var Application $application */
+        /** @var \Symfony\Bundle\FrameworkBundle\Console\Application $application */
         $application = $this->getApplication();
 
         return $application->getKernel();

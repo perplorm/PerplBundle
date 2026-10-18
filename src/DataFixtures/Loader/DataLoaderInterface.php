@@ -5,8 +5,10 @@
  * For the full copyright and license information, please view the LICENSE
  * file that was distributed with this source code.
  *
- * @license    MIT License
+ * @license MIT License
  */
+
+declare(strict_types = 1);
 
 namespace Propel\Bundle\PropelBundle\DataFixtures\Loader;
 
@@ -20,8 +22,10 @@ interface DataLoaderInterface
     /**
      * Loads data from a set of files.
      *
-     * @param string[] $files          A set of files containing datas to load.
-     * @param string   $connectionName The Propel connection name
+     * @param array<string> $files A set of files containing datas to load.
+     * @param string $connectionName The Propel connection name
+     *
+     * @return int
      */
     public function load(array $files, string $connectionName): int;
 }

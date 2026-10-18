@@ -5,10 +5,17 @@
  * For the full copyright and license information, please view the LICENSE
  * file that was distributed with this source code.
  *
- * @license    MIT License
+ * @license MIT License
  */
 
+declare(strict_types = 1);
+
 namespace Propel\Bundle\PropelBundle\Util;
+
+use function lcfirst;
+use function str_replace;
+use function strtr;
+use function ucwords;
 
 /**
  * The Propel inflector class provides methods for inflecting text.
@@ -21,15 +28,16 @@ class PropelInflector
      * Camelize a word.
      * Inspirated by https://github.com/doctrine/common/blob/master/lib/Doctrine/Common/Util/Inflector.php
      *
-     * @param  string $word The word to camelize.
+     * @param string $word The word to camelize.
+     *
      * @return string
      */
     public static function camelize($word)
     {
-        if (empty($word)) {
+        if (!$word) {
             return $word;
         }
 
-        return lcfirst(str_replace(" ", "", ucwords(strtr($word, "_-", "  "))));
+        return lcfirst(str_replace(' ', '', ucwords(strtr($word, '_-', '  '))));
     }
 }

@@ -5,14 +5,24 @@
  * For the full copyright and license information, please view the LICENSE
  * file that was distributed with this source code.
  *
- * @license    MIT License
+ * @license MIT License
  */
+
+declare(strict_types = 1);
 
 namespace Propel\Bundle\PropelBundle\Validator\Constraints;
 
+use Attribute;
 use Symfony\Component\Validator\Attribute\HasNamedArguments;
 use Symfony\Component\Validator\Constraint;
 use Symfony\Component\Validator\Exception\ConstraintDefinitionException;
+use function array_diff;
+use function array_is_list;
+use function array_keys;
+use function implode;
+use function is_array;
+use function sprintf;
+use function trigger_deprecation;
 
 /**
  * Constraint for the Unique Object validator
@@ -20,7 +30,7 @@ use Symfony\Component\Validator\Exception\ConstraintDefinitionException;
  * @author Maxime AILLOUD <maxime.ailloud@gmail.com>
  * @author Marek Kalnik <marekk@theodo.fr>
  */
-#[\Attribute(\Attribute::TARGET_CLASS | \Attribute::IS_REPEATABLE)]
+#[\Attribute(Attribute::TARGET_CLASS | Attribute::IS_REPEATABLE)]
 class UniqueObject extends Constraint
 {
     public string $message = 'A {{ object_class }} object already exists with {{ fields }}';
@@ -31,7 +41,7 @@ class UniqueObject extends Constraint
     public string $messageFieldSeparator = ' and ';
 
     /**
-     * @var string[]
+     * @var array<string>
      */
     public array $fields;
 
@@ -41,8 +51,10 @@ class UniqueObject extends Constraint
     public ?string $errorPath = null;
 
     /**
-     * @param string|string[]|array<string, mixed> $fields the field(s), or an array of options (deprecated)
-     * @param string[]|null                        $groups
+     * @param array<string, mixed>|array<string>|string $fields the field(s), or an array of options (deprecated)
+     * @param array<string>|null $groups
+     *
+     * @throws \Symfony\Component\Validator\Exception\ConstraintDefinitionException
      */
     #[HasNamedArguments]
     public function __construct(
@@ -53,12 +65,13 @@ class UniqueObject extends Constraint
         ?array $groups = null,
         mixed $payload = null,
     ) {
-        if (\is_array($fields) && !array_is_list($fields)) {
-            trigger_deprecation('perplorm/perpl-bundle', '1.0', 'Passing an array of options to "%s" is deprecated, use named arguments instead.', __CLASS__);
+        if (is_array($fields) && !array_is_list($fields)) {
+            trigger_deprecation('perplorm/perpl-bundle', '1.0', 'Passing an array of options to "%s" is deprecated, use named arguments instead.', self::class);
 
             $options = $fields;
-            if ($unknown = array_diff(array_keys($options), ['fields', 'message', 'messageFieldSeparator', 'errorPath', 'groups', 'payload'])) {
-                throw new ConstraintDefinitionException(sprintf('The options "%s" do not exist in constraint "%s".', implode('", "', $unknown), __CLASS__));
+            $unknown = array_diff(array_keys($options), ['fields', 'message', 'messageFieldSeparator', 'errorPath', 'groups', 'payload']);
+            if ($unknown) {
+                throw new ConstraintDefinitionException(sprintf('The options "%s" do not exist in constraint "%s".', implode('", "', $unknown), self::class));
             }
 
             $fields = $options['fields'] ?? [];
@@ -71,16 +84,19 @@ class UniqueObject extends Constraint
 
         parent::__construct(null, $groups, $payload);
 
-        $this->fields = (array) $fields;
+        $this->fields = (array)$fields;
         $this->message = $message ?? $this->message;
         $this->messageFieldSeparator = $messageFieldSeparator ?? $this->messageFieldSeparator;
         $this->errorPath = $errorPath;
 
-        if ([] === $this->fields) {
+        if ($this->fields === []) {
             throw new ConstraintDefinitionException('At least one field must be specified.');
         }
     }
 
+    /**
+     * @return string
+     */
     public function getTargets(): string
     {
         return self::CLASS_CONSTRAINT;

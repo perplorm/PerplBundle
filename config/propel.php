@@ -1,13 +1,15 @@
 <?php
 
+declare(strict_types = 1);
+
 namespace Symfony\Component\DependencyInjection\Loader\Configurator;
 
 use Propel\Bundle\PropelBundle\DataCollector\PropelDataCollector;
 use Propel\Bundle\PropelBundle\DataFixtures\Dumper\YamlDataDumper;
 use Propel\Bundle\PropelBundle\DataFixtures\Loader\XmlDataLoader;
 use Propel\Bundle\PropelBundle\DataFixtures\Loader\YamlDataLoader;
-use Propel\Bundle\PropelBundle\Form\TypeGuesser;
 use Propel\Bundle\PropelBundle\Form\Type\ModelType;
+use Propel\Bundle\PropelBundle\Form\TypeGuesser;
 use Propel\Bundle\PropelBundle\Logger\PropelLogger;
 use Propel\Bundle\PropelBundle\Service\SchemaLocator;
 use Propel\Bundle\PropelBundle\Twig\Extension\SyntaxExtension;

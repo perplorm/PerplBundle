@@ -5,15 +5,18 @@
  * For the full copyright and license information, please view the LICENSE
  * file that was distributed with this source code.
  *
- * @license    MIT License
+ * @license MIT License
  */
+
+declare(strict_types = 1);
 
 namespace Propel\Bundle\PropelBundle\Command;
 
+use Propel\Generator\Command\SqlBuildCommand as CommandSqlBuildCommand;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
-use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Input\InputInterface;
+use Symfony\Component\Console\Input\InputOption;
 
 /**
  * @author Kévin Gomez <contact@kevingomez.fr>
@@ -31,8 +34,7 @@ class SqlBuildCommand extends WrappedCommand
         $this
             ->addOption('sql-dir', null, InputOption::VALUE_REQUIRED, 'The SQL files directory')
             ->addOption('overwrite', null, InputOption::VALUE_NONE, '')
-            ->addOption('connection', null, InputOption::VALUE_IS_ARRAY | InputOption::VALUE_OPTIONAL, 'Connection to use. Example: default, bookstore')
-        ;
+            ->addOption('connection', null, InputOption::VALUE_IS_ARRAY | InputOption::VALUE_OPTIONAL, 'Connection to use. Example: default, bookstore');
     }
 
     /**
@@ -40,7 +42,7 @@ class SqlBuildCommand extends WrappedCommand
      */
     protected function createSubCommandInstance(): Command
     {
-        return new \Propel\Generator\Command\SqlBuildCommand();
+        return new CommandSqlBuildCommand();
     }
 
     /**
@@ -51,10 +53,10 @@ class SqlBuildCommand extends WrappedCommand
         $config = $this->getConfig();
         $defaultSqlDir = $config['paths']['sqlDir'];
 
-        return array(
-            '--connection'  => $this->getConnections($input->getOption('connection')),
-            '--output-dir'  => $input->getOption('sql-dir') ?: $defaultSqlDir,
-            '--overwrite' => $input->getOption('overwrite')
-        );
+        return [
+            '--connection' => $this->getConnections($input->getOption('connection')),
+            '--output-dir' => $input->getOption('sql-dir') ?: $defaultSqlDir,
+            '--overwrite' => $input->getOption('overwrite'),
+        ];
     }
 }

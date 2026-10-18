@@ -5,17 +5,23 @@
  * For the full copyright and license information, please view the LICENSE
  * file that was distributed with this source code.
  *
- * @license    MIT License
+ * @license MIT License
  */
+
+declare(strict_types = 1);
 
 namespace Propel\Bundle\PropelBundle\Command;
 
 use Symfony\Component\Console\Attribute\AsCommand;
-use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Input\InputInterface;
+use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Filesystem\Exception\IOException;
 use Symfony\Component\Filesystem\Filesystem;
+use function file_exists;
+use function realpath;
+use function sprintf;
+use function time;
 
 /**
  * FixturesDumpCommand.
@@ -32,6 +38,8 @@ class FixturesDumpCommand extends AbstractCommand
 
     /**
      * @see Command
+     *
+     * @return void
      */
     protected function configure(): void
     {
@@ -44,16 +52,16 @@ The <info>propel:fixtures:dump</info> dumps data from database into YAML fixture
 The <info>--connection</info> parameter allows you to change the connection to use.
 The <info>--dir</info> parameter allows you to change the output directory.
 The default connection is the active connection (propel.dbal.default_connection).
-EOT
-            )
+EOT)
 
             ->addOption('connection', null, InputOption::VALUE_OPTIONAL, 'Set this parameter to define a connection to use')
-            ->addOption('dir', null, InputOption::VALUE_OPTIONAL, 'Set this parameter to define a fixture directory')
-        ;
+            ->addOption('dir', null, InputOption::VALUE_OPTIONAL, 'Set this parameter to define a fixture directory');
     }
 
     /**
      * {@inheritdoc}
+     *
+     * @throws \Symfony\Component\Filesystem\Exception\IOException
      */
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
@@ -62,7 +70,7 @@ EOT
 
         if (!file_exists($path)) {
             $output->writeln("<info>The $path folder does not exists.</info>");
-            if ($this->askConfirmation($input, $output, "<question>Do you want me to create it for you ?</question> [Yes]")) {
+            if ($this->askConfirmation($input, $output, '<question>Do you want me to create it for you ?</question> [Yes]')) {
                 $fs = new Filesystem();
                 $fs->mkdir($path);
                 $this->writeNewDirectory($output, $path);
@@ -78,6 +86,6 @@ EOT
 
         $this->writeNewFile($output, $filename);
 
-        return \Propel\Generator\Command\AbstractCommand::CODE_SUCCESS;
+        return self::SUCCESS;
     }
 }

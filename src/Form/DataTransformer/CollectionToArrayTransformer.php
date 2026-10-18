@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types = 1);
+
 /*
  * This file is part of the Symfony package.
  *
@@ -14,6 +16,7 @@ namespace Propel\Bundle\PropelBundle\Form\DataTransformer;
 use Propel\Runtime\Collection\ObjectCollection;
 use Symfony\Component\Form\DataTransformerInterface;
 use Symfony\Component\Form\Exception\TransformationFailedException;
+use function is_array;
 
 /**
  * CollectionToArrayTransformer class.
@@ -21,19 +24,21 @@ use Symfony\Component\Form\Exception\TransformationFailedException;
  * @author William Durand <william.durand1@gmail.com>
  * @author Pierre-Yves Lebecq <py.lebecq@gmail.com>
  *
- * @implements DataTransformerInterface<ObjectCollection<mixed>, array<mixed>>
+ * @implements \Symfony\Component\Form\DataTransformerInterface<\Propel\Runtime\Collection\ObjectCollection<mixed>, array<mixed>>
  */
 class CollectionToArrayTransformer implements DataTransformerInterface
 {
     /**
      * @param mixed $collection
      *
+     * @throws \Symfony\Component\Form\Exception\TransformationFailedException
+     *
      * @return array<mixed>
      */
     public function transform(mixed $collection): array
     {
-        if (null === $collection) {
-            return array();
+        if ($collection === null) {
+            return [];
         }
 
         if (!$collection instanceof ObjectCollection) {
@@ -46,13 +51,15 @@ class CollectionToArrayTransformer implements DataTransformerInterface
     /**
      * @param array<mixed>|string|null $array
      *
-     * @return ObjectCollection<mixed>
+     * @throws \Symfony\Component\Form\Exception\TransformationFailedException
+     *
+     * @return \Propel\Runtime\Collection\ObjectCollection<mixed>
      */
     public function reverseTransform(mixed $array): ObjectCollection
     {
         $collection = new ObjectCollection();
 
-        if ('' === $array || null === $array) {
+        if ($array === '' || $array === null) {
             return $collection;
         }
 

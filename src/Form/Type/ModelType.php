@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types = 1);
+
 /*
  * This file is part of the Symfony package.
  *
@@ -11,20 +13,28 @@
 
 namespace Propel\Bundle\PropelBundle\Form\Type;
 
+use PDO;
 use Propel\Bundle\PropelBundle\Form\ChoiceList\PropelChoiceLoader;
 use Propel\Bundle\PropelBundle\Form\DataTransformer\CollectionToArrayTransformer;
-use Propel\Runtime\ActiveQuery\ModelCriteria;
-use Propel\Runtime\Map\ColumnMap;
 use Symfony\Component\Form\AbstractType;
 use Symfony\Component\Form\ChoiceList\Factory\ChoiceListFactoryInterface;
 use Symfony\Component\Form\ChoiceList\Factory\DefaultChoiceListFactory;
 use Symfony\Component\Form\ChoiceList\Factory\PropertyAccessDecorator;
 use Symfony\Component\Form\FormBuilderInterface;
+use Symfony\Component\OptionsResolver\Exception\InvalidOptionsException;
+use Symfony\Component\OptionsResolver\Exception\MissingOptionsException;
 use Symfony\Component\OptionsResolver\Options;
 use Symfony\Component\OptionsResolver\OptionsResolver;
 use Symfony\Component\PropertyAccess\PropertyAccessorInterface;
-use Symfony\Component\OptionsResolver\Exception\InvalidOptionsException;
-use Symfony\Component\OptionsResolver\Exception\MissingOptionsException;
+use function call_user_func;
+use function class_exists;
+use function count;
+use function current;
+use function in_array;
+use function method_exists;
+use function sprintf;
+use function str_replace;
+use function ucfirst;
 
 /**
  * ModelType class.
@@ -54,26 +64,24 @@ use Symfony\Component\OptionsResolver\Exception\MissingOptionsException;
  *   }
  * </code>
  *
- * @extends AbstractType<mixed>
+ * @extends \Symfony\Component\Form\AbstractType<mixed>
  */
 class ModelType extends AbstractType
 {
     /**
-     * @var ChoiceListFactoryInterface
+     * @var \Symfony\Component\Form\ChoiceList\Factory\ChoiceListFactoryInterface
      */
     private $choiceListFactory;
 
     /**
-     * ModelType constructor.
-     *
-     * @param PropertyAccessorInterface|null  $propertyAccessor
-     * @param ChoiceListFactoryInterface|null $choiceListFactory
+     * @param \Symfony\Component\PropertyAccess\PropertyAccessorInterface|null $propertyAccessor
+     * @param \Symfony\Component\Form\ChoiceList\Factory\ChoiceListFactoryInterface|null $choiceListFactory
      */
     public function __construct(?PropertyAccessorInterface $propertyAccessor = null, ?ChoiceListFactoryInterface $choiceListFactory = null)
     {
         $this->choiceListFactory = $choiceListFactory ?: new PropertyAccessDecorator(
             new DefaultChoiceListFactory(),
-            $propertyAccessor
+            $propertyAccessor,
         );
     }
 
@@ -82,16 +90,16 @@ class ModelType extends AbstractType
      *
      * For backwards compatibility, objects are cast to strings by default.
      *
+     * @internal This method is public to be usable as callback. It should not
+     *           be used in user code.
+     *
      * @param object $choice The object.
      *
      * @return string The string representation of the object.
-     *
-     * @internal This method is public to be usable as callback. It should not
-     *           be used in user code.
      */
     public static function createChoiceLabel($choice)
     {
-        return (string) $choice;
+        return (string)$choice;
     }
 
     /**
@@ -101,19 +109,19 @@ class ModelType extends AbstractType
      * a single-column integer ID. In that case, the value of the field is
      * the ID of the object. That ID is also used as field name.
      *
-     * @param object     $choice The object.
-     * @param int|string $key    The choice key.
-     * @param string     $value  The choice value. Corresponds to the object's
+     * @internal This method is public to be usable as callback. It should not
+     *           be used in user code.
+     *
+     * @param object $choice The object.
+     * @param string|int $key The choice key.
+     * @param string $value The choice value. Corresponds to the object's
      *                           ID here.
      *
      * @return string The field name.
-     *
-     * @internal This method is public to be usable as callback. It should not
-     *           be used in user code.
      */
     public static function createChoiceName($choice, $key, $value): string
     {
-        return str_replace('-', '_', (string) $value);
+        return str_replace('-', '_', (string)$value);
     }
 
     /**
@@ -123,8 +131,7 @@ class ModelType extends AbstractType
     {
         if ($options['multiple']) {
             $builder
-                ->addViewTransformer(new CollectionToArrayTransformer(), true)
-            ;
+                ->addViewTransformer(new CollectionToArrayTransformer(), true);
         }
     }
 
@@ -135,13 +142,12 @@ class ModelType extends AbstractType
     {
         $choiceLoader = function (Options $options) {
             // Unless the choices are given explicitly, load them on demand
-            if (null === $options['choices']) {
-
+            if ($options['choices'] === null) {
                 $propelChoiceLoader = new PropelChoiceLoader(
                     $this->choiceListFactory,
                     $options['class'],
                     $options['query'],
-                    $options['index_property']
+                    $options['index_property'],
                 );
 
                 return $propelChoiceLoader;
@@ -151,41 +157,42 @@ class ModelType extends AbstractType
         };
 
         $choiceName = function (Options $options) {
-
-            /** @var ModelCriteria $query */
+            /** @var \Propel\Runtime\ActiveQuery\ModelCriteria $query */
             $query = $options['query'];
             if ($options['index_property']) {
-                $identifier = array($query->getTableMap()->getColumn($options['index_property']));
+                $identifier = [$query->getTableMap()->getColumn($options['index_property'])];
             } else {
                 $identifier = $query->getTableMap()->getPrimaryKeys();
             }
-            /** @var ColumnMap $firstIdentifier */
+            /** @var \Propel\Runtime\Map\ColumnMap $firstIdentifier */
             $firstIdentifier = current($identifier);
-            if (count($identifier) === 1 && $firstIdentifier->getPdoType() === \PDO::PARAM_INT) {
-                return array(__CLASS__, 'createChoiceName');
+            if (count($identifier) === 1 && $firstIdentifier->getPdoType() === PDO::PARAM_INT) {
+                return [self::class, 'createChoiceName'];
             }
+
             return null;
         };
 
         $choiceValue = function (Options $options) {
-
-            /** @var ModelCriteria $query */
+            /** @var \Propel\Runtime\ActiveQuery\ModelCriteria $query */
             $query = $options['query'];
             if ($options['index_property']) {
-                $identifier = array($query->getTableMap()->getColumn($options['index_property']));
+                $identifier = [$query->getTableMap()->getColumn($options['index_property'])];
             } else {
                 $identifier = $query->getTableMap()->getPrimaryKeys();
             }
-            /** @var ColumnMap $firstIdentifier */
+            /** @var \Propel\Runtime\Map\ColumnMap $firstIdentifier */
             $firstIdentifier = current($identifier);
-            if (count($identifier) === 1 && in_array($firstIdentifier->getPdoType(), [\PDO::PARAM_BOOL, \PDO::PARAM_INT, \PDO::PARAM_STR])) {
-                return function($object) use ($firstIdentifier) {
+            if (count($identifier) === 1 && in_array($firstIdentifier->getPdoType(), [PDO::PARAM_BOOL, PDO::PARAM_INT, PDO::PARAM_STR])) {
+                return function ($object) use ($firstIdentifier) {
                     if ($object) {
                         return call_user_func([$object, 'get' . ucfirst($firstIdentifier->getPhpName())]);
                     }
+
                     return null;
                 };
             }
+
             return null;
         };
 
@@ -196,29 +203,31 @@ class ModelType extends AbstractType
                     if (empty($options['class'])) {
                         throw new MissingOptionsException('The "class" parameter is empty, you should provide the model class');
                     }
+
                     throw new InvalidOptionsException(
                         sprintf(
                             'The query class "%s" is not found, you should provide the FQCN of the model class',
-                            $queryClass
-                        )
+                            $queryClass,
+                        ),
                     );
                 }
                 $query = new $queryClass();
             }
+
             return $query;
         };
 
         $choiceLabelNormalizer = function (Options $options, $choiceLabel) {
             if ($choiceLabel === null) {
                 if ($options['property'] == null) {
-                    $choiceLabel = array(__CLASS__, 'createChoiceLabel');
+                    $choiceLabel = [self::class, 'createChoiceLabel'];
                 } else {
                     $valueProperty = $options['property'];
-                    /** @var ModelCriteria $query */
+                    /** @var \Propel\Runtime\ActiveQuery\ModelCriteria $query */
                     $query = $options['query'];
 
-                    $choiceLabel = function($choice) use ($valueProperty, $query) {
-                        $getter = 'get'.ucfirst($valueProperty);
+                    $choiceLabel = function ($choice) use ($valueProperty, $query) {
+                        $getter = 'get' . ucfirst($valueProperty);
                         if (!method_exists($choice, $getter)) {
                             $getter = 'get' . ucfirst($query->getTableMap()->getColumn($valueProperty)->getPhpName());
                         }
@@ -244,17 +253,23 @@ class ModelType extends AbstractType
             'by_reference' => false,
         ]);
 
-        $resolver->setRequired(array('class'));
+        $resolver->setRequired(['class']);
         $resolver->setNormalizer('query', $queryNormalizer);
         $resolver->setNormalizer('choice_label', $choiceLabelNormalizer);
         $resolver->setAllowedTypes('query', ['null', 'Propel\Runtime\ActiveQuery\ModelCriteria']);
     }
 
+    /**
+     * @return string
+     */
     public function getBlockPrefix(): string
     {
         return 'model';
     }
 
+    /**
+     * @return string|null
+     */
     public function getParent(): ?string
     {
         return 'Symfony\Component\Form\Extension\Core\Type\ChoiceType';

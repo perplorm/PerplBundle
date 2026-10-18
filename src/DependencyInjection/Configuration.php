@@ -5,13 +5,20 @@
  * For the full copyright and license information, please view the LICENSE
  * file that was distributed with this source code.
  *
- * @license    MIT License
+ * @license MIT License
  */
+
+declare(strict_types = 1);
 
 namespace Propel\Bundle\PropelBundle\DependencyInjection;
 
+use InvalidArgumentException;
 use Propel\Common\Config\PropelConfiguration;
 use Symfony\Component\Config\Definition\Builder\ArrayNodeDefinition;
+use function implode;
+use function preg_replace;
+use function strpos;
+use function strtolower;
 
 /**
  * This class contains the configuration information for the bundle
@@ -19,16 +26,25 @@ use Symfony\Component\Config\Definition\Builder\ArrayNodeDefinition;
 class Configuration extends PropelConfiguration
 {
     private bool $debug;
+
     private string $defaultDir;
+
     private string $kernelDir;
 
+    /**
+     * @param bool $debug
+     * @param string $kernelDir
+     */
     public function __construct(bool $debug, string $kernelDir)
     {
         $this->debug = $debug;
-        $this->defaultDir = $kernelDir.'/propel';
+        $this->defaultDir = $kernelDir . '/propel';
         $this->kernelDir = $kernelDir;
     }
 
+    /**
+     * @return void
+     */
     protected function addPathsSection(ArrayNodeDefinition $node): void
     {
         $node
@@ -37,16 +53,18 @@ class Configuration extends PropelConfiguration
                     ->addDefaultsIfNotSet()
                     ->children()
                         ->scalarNode('schemaDir')->defaultValue($this->defaultDir)->end()
-                        ->scalarNode('sqlDir')->defaultValue($this->defaultDir.'/sql')->end()
-                        ->scalarNode('migrationDir')->defaultValue($this->defaultDir.'/migrations')->end()
+                        ->scalarNode('sqlDir')->defaultValue($this->defaultDir . '/sql')->end()
+                        ->scalarNode('migrationDir')->defaultValue($this->defaultDir . '/migrations')->end()
                         ->scalarNode('composerDir')->defaultNull()->end()
-                        ->scalarNode('loaderScriptDir')->defaultValue($this->kernelDir.'/generated-conf')->end()
+                        ->scalarNode('loaderScriptDir')->defaultValue($this->kernelDir . '/generated-conf')->end()
                     ->end()
                 ->end()
-            ->end()
-        ;
+            ->end();
     }
 
+    /**
+     * @return void
+     */
     protected function addRuntimeSection(ArrayNodeDefinition $node): void
     {
         $node
@@ -66,7 +84,7 @@ class Configuration extends PropelConfiguration
                                 ->children()
                                     ->scalarNode('type')->end()
                                     ->scalarNode('path')->end()
-                                    ->enumNode('level')->values(array(100, 200, 250, 300, 400, 500, 550, 600))->end()
+                                    ->enumNode('level')->values([100, 200, 250, 300, 400, 500, 550, 600])->end()
                                 ->end()
                             ->end()
                         ->end()
@@ -115,9 +133,12 @@ class Configuration extends PropelConfiguration
             ->end();
     }
 
+    /**
+     * @return void
+     */
     protected function addDatabaseSection(ArrayNodeDefinition $node): void
     {
-        $validAdapters = array('mysql', 'pgsql', 'sqlite', 'mssql', 'sqlsrv', 'oracle');
+        $validAdapters = ['mysql', 'pgsql', 'sqlite', 'mssql', 'sqlsrv', 'oracle'];
 
         $node
             ->children()
@@ -129,10 +150,10 @@ class Configuration extends PropelConfiguration
                             ->isRequired()
                             ->validate()
                             ->always()
-                                ->then(function($connections) {
+                                ->then(function ($connections) {
                                     foreach ($connections as $name => $connection) {
                                         if (strpos($name, '.') !== false) {
-                                            throw new \InvalidArgumentException('Dots are not allowed in connection names');
+                                            throw new InvalidArgumentException('Dots are not allowed in connection names');
                                         }
                                     }
 
@@ -152,7 +173,9 @@ class Configuration extends PropelConfiguration
                                         ->cannotBeEmpty()
                                         ->beforeNormalization()
                                             ->ifString()
-                                            ->then(function ($v) { return preg_replace('/^pdo_/', '', strtolower($v)); })
+                                            ->then(function ($v) {
+                                                return preg_replace('/^pdo_/', '', strtolower($v));
+                                            })
                                         ->end()
                                         ->validate()
                                             ->ifNotInArray($validAdapters)
@@ -164,13 +187,15 @@ class Configuration extends PropelConfiguration
                                         ->cannotBeEmpty()
                                         ->beforeNormalization()
                                             ->ifString()
-                                            ->then(function ($v) { return preg_replace('/^pdo_/', '', $v); })
+                                            ->then(function ($v) {
+                                                return preg_replace('/^pdo_/', '', $v);
+                                            })
                                         ->end()
                                     ->end()
                                     ->scalarNode('user')->isRequired()->end()
                                     ->scalarNode('password')->isRequired()->treatNullLike('')->end()
                                     ->arrayNode('options')
-                                    	->addDefaultsIfNotSet()
+                                        ->addDefaultsIfNotSet()
                                         ->children()
                                             ->booleanNode('ATTR_PERSISTENT')->defaultFalse()->end()
                                             ->scalarNode('MYSQL_ATTR_SSL_CA')->end()
@@ -180,7 +205,7 @@ class Configuration extends PropelConfiguration
                                         ->end()
                                     ->end()
                                     ->arrayNode('attributes')
-                                    	->addDefaultsIfNotSet()
+                                        ->addDefaultsIfNotSet()
                                         ->children()
                                             ->booleanNode('ATTR_EMULATE_PREPARES')->defaultFalse()->end()
                                             ->scalarNode('SQLSRV_ATTR_ENCODING')->end()
@@ -205,7 +230,9 @@ class Configuration extends PropelConfiguration
                                                 ->scalarNode('dsn')
                                                     ->beforeNormalization()
                                                     ->ifString()
-                                                    ->then(function ($v) { return preg_replace('/^pdo_/', '', $v); })
+                                                    ->then(function ($v) {
+                                                        return preg_replace('/^pdo_/', '', $v);
+                                                    })
                                                     ->end()
                                                 ->end()
                                             ->end()
@@ -242,7 +269,6 @@ class Configuration extends PropelConfiguration
                         ->end() //adapters
                     ->end()
                 ->end() //database
-            ->end()
-        ;
+            ->end();
     }
 }

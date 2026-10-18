@@ -5,19 +5,25 @@
  * For the full copyright and license information, please view the LICENSE
  * file that was distributed with this source code.
  *
- * @license    MIT License
+ * @license MIT License
  */
+
+declare(strict_types = 1);
 
 namespace Propel\Bundle\PropelBundle\Validator\Constraints;
 
 use Propel\Runtime\ActiveRecord\ActiveRecordInterface;
 use Propel\Runtime\Map\TableMap;
-
 use Symfony\Component\Validator\Constraint;
 use Symfony\Component\Validator\ConstraintValidator;
 use Symfony\Component\Validator\Exception\ConstraintDefinitionException;
 use Symfony\Component\Validator\Exception\UnexpectedTypeException;
 use Symfony\Component\Validator\Exception\UnexpectedValueException;
+use function array_search;
+use function count;
+use function get_class;
+use function implode;
+use function sprintf;
 
 /**
  * Unique Object Validator checks if one or a set of fields contain unique values.
@@ -27,6 +33,13 @@ use Symfony\Component\Validator\Exception\UnexpectedValueException;
  */
 class UniqueObjectValidator extends ConstraintValidator
 {
+    /**
+     * @throws \Symfony\Component\Validator\Exception\ConstraintDefinitionException
+     * @throws \Symfony\Component\Validator\Exception\UnexpectedTypeException
+     * @throws \Symfony\Component\Validator\Exception\UnexpectedValueException
+     *
+     * @return void
+     */
     public function validate(mixed $object, Constraint $constraint): void
     {
         if (!$constraint instanceof UniqueObject) {
@@ -37,20 +50,20 @@ class UniqueObjectValidator extends ConstraintValidator
             throw new UnexpectedValueException($object, ActiveRecordInterface::class);
         }
 
-        $fields         = $constraint->fields;
-        $class          = get_class($object);
-        $queryClass     = $class . 'Query';
-        $tableMapClass  = $class::TABLE_MAP;
-        $classFields    = $tableMapClass::getFieldnames(TableMap::TYPE_FIELDNAME);
+        $fields = $constraint->fields;
+        $class = get_class($object);
+        $queryClass = $class . 'Query';
+        $tableMapClass = $class::TABLE_MAP;
+        $classFields = $tableMapClass::getFieldnames(TableMap::TYPE_FIELDNAME);
 
         // ensure at least one field is selected
-        if (0 === \count($fields)) {
+        if (count($fields) === 0) {
             throw new ConstraintDefinitionException('At least one field has to be specified.');
         }
 
         foreach ($fields as $fieldName) {
-            if (false === array_search($fieldName, $classFields)) {
-                throw new ConstraintDefinitionException('The field "' . $fieldName .'" doesn\'t exist in the "' . $class . '" class.');
+            if (array_search($fieldName, $classFields) === false) {
+                throw new ConstraintDefinitionException('The field "' . $fieldName . '" doesn\'t exist in the "' . $class . '" class.');
             }
         }
 
@@ -58,33 +71,32 @@ class UniqueObjectValidator extends ConstraintValidator
         foreach ($fields as $fieldName) {
             $bddUsersQuery->filterBy(
                 $tableMapClass::translateFieldname($fieldName, TableMap::TYPE_FIELDNAME, TableMap::TYPE_PHPNAME),
-                $object->getByName($fieldName, TableMap::TYPE_FIELDNAME)
+                $object->getByName($fieldName, TableMap::TYPE_FIELDNAME),
             );
         }
 
-        $bddUsers  = $bddUsersQuery->find();
+        $bddUsers = $bddUsersQuery->find();
         $countUser = count($bddUsers);
 
         if ($countUser > 1 || ($countUser === 1 && !$object->equals($bddUsers[0]))) {
-            $fieldParts = array();
+            $fieldParts = [];
 
             foreach ($fields as $fieldName) {
                 $fieldParts[] = sprintf(
                     '%s "%s"',
                     $tableMapClass::translateFieldname($fieldName, TableMap::TYPE_FIELDNAME, TableMap::TYPE_PHPNAME),
-                    $object->getByName($fieldName, TableMap::TYPE_FIELDNAME)
+                    $object->getByName($fieldName, TableMap::TYPE_FIELDNAME),
                 );
             }
 
             $this->context->buildViolation($constraint->message)
                 // if no path is selected select first field
                 ->atPath($constraint->errorPath ?? $fields[0])
-                ->setParameters(array(
+                ->setParameters([
                     '{{ object_class }}' => $class,
-                    '{{ fields }}' => implode($constraint->messageFieldSeparator, $fieldParts)
-                ))
+                    '{{ fields }}' => implode($constraint->messageFieldSeparator, $fieldParts),
+                ])
                 ->addViolation();
-
         }
     }
 }

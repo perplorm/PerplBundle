@@ -79,10 +79,29 @@ jobs:
       - name: Run PHPStan
         run: vendor/bin/phpstan analyse --no-progress
 
+  code-style:
+    name: Code style
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.5'
+          coverage: none
+
+      - name: Install dependencies
+        uses: ramsey/composer-install@v4
+
+      - name: Run PHP_CodeSniffer
+        run: composer cs-check
+
   status:
     name: Status
     if: always()
-    needs: [ tests, phpstan ]
+    needs: [ tests, phpstan, code-style ]
     runs-on: ubuntu-latest
     steps:
       - name: Fail if a job failed or was cancelled

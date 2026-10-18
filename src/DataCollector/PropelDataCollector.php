@@ -5,8 +5,10 @@
  * For the full copyright and license information, please view the LICENSE
  * file that was distributed with this source code.
  *
- * @license    MIT License
+ * @license MIT License
  */
+
+declare(strict_types = 1);
 
 namespace Propel\Bundle\PropelBundle\DataCollector;
 
@@ -14,8 +16,9 @@ use Propel\Bundle\PropelBundle\Logger\PropelLogger;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\DataCollector\DataCollector;
-use Symfony\Component\VarDumper\Caster\TraceStub;
 use Symfony\Component\VarDumper\Cloner\Data;
+use Throwable;
+use function count;
 
 /**
  * The PropelDataCollector collector class collects information.
@@ -26,6 +29,9 @@ class PropelDataCollector extends DataCollector
 {
     protected PropelLogger $logger;
 
+    /**
+     * @param \Propel\Bundle\PropelBundle\Logger\PropelLogger $logger
+     */
     public function __construct(PropelLogger $logger)
     {
         $this->logger = $logger;
@@ -34,12 +40,12 @@ class PropelDataCollector extends DataCollector
     /**
      * {@inheritdoc}
      */
-    public function collect(Request $request, Response $response, ?\Throwable $exception = null): void
+    public function collect(Request $request, Response $response, ?Throwable $exception = null): void
     {
-        $this->data = array(
-            'queries'       => $this->cloneVar($this->buildQueries()),
-            'querycount'    => $this->countQueries(),
-        );
+        $this->data = [
+            'queries' => $this->cloneVar($this->buildQueries()),
+            'querycount' => $this->countQueries(),
+        ];
     }
 
     /**
@@ -55,7 +61,7 @@ class PropelDataCollector extends DataCollector
     /**
      * Returns queries.
      *
-     * @return Data<int, array{sql: string, connection: string, time: int|float, memory: int, trace: TraceStub}> Queries
+     * @return \Symfony\Component\VarDumper\Cloner\Data<int, array{sql: string, connection: string, time: int|float, memory: int, trace: \Symfony\Component\VarDumper\Caster\TraceStub}> Queries
      */
     public function getQueries(): Data
     {
@@ -81,7 +87,7 @@ class PropelDataCollector extends DataCollector
     {
         $time = 0;
         foreach ($this->data['queries'] as $query) {
-            $time += (float) $query['time'];
+            $time += (float)$query['time'];
         }
 
         return $time;
@@ -90,7 +96,7 @@ class PropelDataCollector extends DataCollector
     /**
      * Creates an array of Build objects.
      *
-     * @return array<int, array{sql: string, connection: string, time: int|float, memory: int, trace: TraceStub}> An array of Build objects
+     * @return array<int, array{sql: string, connection: string, time: int|float, memory: int, trace: \Symfony\Component\VarDumper\Caster\TraceStub}> An array of Build objects
      */
     private function buildQueries(): array
     {

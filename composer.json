@@ -47,11 +47,13 @@
         "phpstan/phpstan-symfony": "^2.0",
         "twig/twig": "*",
         "symfony/stopwatch": "^7.4||^8.0",
-        "symfony/web-profiler-bundle": "^7.4||^8.0"
+        "symfony/web-profiler-bundle": "^7.4||^8.0",
+        "spryker/code-sniffer": "^0.17.2"
     },
     "config": {
         "allow-plugins": {
-            "phpstan/extension-installer": true
+            "phpstan/extension-installer": true,
+            "dealerdirect/phpcodesniffer-composer-installer": true
         }
     },
     "extra": {
@@ -60,5 +62,7 @@
         }
     },
     "scripts": {
+        "cs-check": "phpcs",
+        "cs-fix": "phpcbf"
     }
 }

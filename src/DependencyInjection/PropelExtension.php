@@ -5,15 +5,19 @@
  * For the full copyright and license information, please view the LICENSE
  * file that was distributed with this source code.
  *
- * @license    MIT License
+ * @license MIT License
  */
+
+declare(strict_types = 1);
 
 namespace Propel\Bundle\PropelBundle\DependencyInjection;
 
-use Symfony\Component\DependencyInjection\Loader\PhpFileLoader;
-use Symfony\Component\DependencyInjection\Extension\Extension;
-use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\Config\FileLocator;
+use Symfony\Component\DependencyInjection\ContainerBuilder;
+use Symfony\Component\DependencyInjection\Extension\Extension;
+use Symfony\Component\DependencyInjection\Loader\PhpFileLoader;
+use function array_keys;
+use function count;
 
 /**
  * PropelExtension loads the PropelBundle configuration.
@@ -24,15 +28,13 @@ class PropelExtension extends Extension
 {
     /**
      * {@inheritdoc}
-     *
-     * @throws \Exception
      */
     public function load(array $configs, ContainerBuilder $container): void
     {
         $configuration = $this->getConfiguration($configs, $container);
         $config = $this->processConfiguration($configuration, $configs);
 
-        if (1 === count($config['database']['connections'])) {
+        if (count($config['database']['connections']) === 1) {
             $defaultConnection = array_keys($config['database']['connections'])[0];
             if (!isset($config['runtime']['defaultConnection'])) {
                 $config['runtime']['defaultConnection'] = $defaultConnection;
@@ -47,7 +49,7 @@ class PropelExtension extends Extension
 
         // Load services
         if (!$container->hasDefinition('propel')) {
-            $loader = new PhpFileLoader($container, new FileLocator(__DIR__.'/../../config'));
+            $loader = new PhpFileLoader($container, new FileLocator(__DIR__ . '/../../config'));
             $loader->load('propel.php');
             $loader->load('value_resolver.php');
             $loader->load('security.php');
@@ -57,9 +59,9 @@ class PropelExtension extends Extension
 
     /**
      * @param array<mixed> $config
-     * @param ContainerBuilder $container
+     * @param \Symfony\Component\DependencyInjection\ContainerBuilder $container
      *
-     * @return Configuration
+     * @return \Propel\Bundle\PropelBundle\DependencyInjection\Configuration
      */
     public function getConfiguration(array $config, ContainerBuilder $container): Configuration
     {

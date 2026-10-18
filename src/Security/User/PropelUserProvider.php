@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types = 1);
+
 /*
  * This file is part of the Symfony package.
  *
@@ -16,13 +18,19 @@ use Symfony\Component\Security\Core\Exception\UnsupportedUserException;
 use Symfony\Component\Security\Core\Exception\UserNotFoundException;
 use Symfony\Component\Security\Core\User\UserInterface;
 use Symfony\Component\Security\Core\User\UserProviderInterface;
+use function get_class;
+use function is_subclass_of;
+use function json_encode;
+use function sprintf;
+use function trigger_deprecation;
+use function ucfirst;
 
 /**
  * Provides easy to use provisioning for Propel model users.
  *
  * @author William DURAND <william.durand1@gmail.com>
  *
- * @implements UserProviderInterface<UserInterface>
+ * @implements \Symfony\Component\Security\Core\User\UserProviderInterface<\Symfony\Component\Security\Core\User\UserInterface>
  */
 class PropelUserProvider implements UserProviderInterface
 {
@@ -48,19 +56,26 @@ class PropelUserProvider implements UserProviderInterface
     protected $property;
 
     /**
-     * @param string      $class    The User model class.
+     * @param string $class The User model class.
      * @param string|null $property The property to use to retrieve a user, defaults to "username".
      */
     public function __construct(string $class, ?string $property = null)
     {
         $this->class = $class;
-        $this->queryClass = $class.'Query';
+        $this->queryClass = $class . 'Query';
         $this->property = $property;
     }
 
+    /**
+     * @param string $identifier
+     *
+     * @throws \Symfony\Component\Security\Core\Exception\UserNotFoundException
+     *
+     * @return \Symfony\Component\Security\Core\User\UserInterface
+     */
     public function loadUserByIdentifier(string $identifier): UserInterface
     {
-        $filter = 'filterBy'.ucfirst($this->property ?? 'username');
+        $filter = 'filterBy' . ucfirst($this->property ?? 'username');
         $user = $this->queryClass::create()->$filter($identifier)->findOne();
 
         if (!$user instanceof UserInterface) {
@@ -72,6 +87,10 @@ class PropelUserProvider implements UserProviderInterface
 
     /**
      * @deprecated since 1.0, use loadUserByIdentifier() instead
+     *
+     * @param string $username
+     *
+     * @return \Symfony\Component\Security\Core\User\UserInterface
      */
     public function loadUserByUsername(string $username): UserInterface
     {
@@ -80,6 +99,14 @@ class PropelUserProvider implements UserProviderInterface
         return $this->loadUserByIdentifier($username);
     }
 
+    /**
+     * @param \Symfony\Component\Security\Core\User\UserInterface $user
+     *
+     * @throws \Symfony\Component\Security\Core\Exception\UnsupportedUserException
+     * @throws \Symfony\Component\Security\Core\Exception\UserNotFoundException
+     *
+     * @return \Symfony\Component\Security\Core\User\UserInterface
+     */
     public function refreshUser(UserInterface $user): UserInterface
     {
         if (!$user instanceof $this->class || !$user instanceof ActiveRecordInterface) {
@@ -95,6 +122,11 @@ class PropelUserProvider implements UserProviderInterface
         return $refreshedUser;
     }
 
+    /**
+     * @param string $class
+     *
+     * @return bool
+     */
     public function supportsClass(string $class): bool
     {
         return $class === $this->class || is_subclass_of($class, $this->class);
