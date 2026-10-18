@@ -1,7 +1,7 @@
 PerplBundle
 ===========
 
-[![CI](https://github.com/smhg/PropelBundle/actions/workflows/ci.yml/badge.svg)](https://github.com/smhg/PropelBundle/actions/workflows/ci.yml)
+[![CI](https://github.com/perplorm/PerplBundle/actions/workflows/ci.yml/badge.svg)](https://github.com/perplorm/PerplBundle/actions/workflows/ci.yml)
 
 Integration of [Perpl](https://perplorm.github.io), the maintained fork of Propel2, and of [Propel2](https://github.com/propelorm/Propel2) itself in Symfony.
 
