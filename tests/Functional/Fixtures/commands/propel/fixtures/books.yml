@@ -1,0 +1,5 @@
+App\Model\Book:
+    dune:
+        title: Dune
+    emma:
+        title: Emma

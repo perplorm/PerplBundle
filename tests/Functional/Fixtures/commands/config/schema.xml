@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<database name="default" defaultIdMethod="native" namespace="App\Model">
+    <table name="book">
+        <column name="id" type="INTEGER" primaryKey="true" autoIncrement="true" required="true"/>
+        <column name="title" type="VARCHAR" size="255" required="true"/>
+    </table>
+</database>
