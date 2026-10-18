@@ -78,3 +78,13 @@ jobs:
 
       - name: Run PHPStan
         run: vendor/bin/phpstan analyse --no-progress
+
+  status:
+    name: Status
+    if: always()
+    needs: [ tests, phpstan ]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fail if a job failed or was cancelled
+        if: contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')
+        run: exit 1
