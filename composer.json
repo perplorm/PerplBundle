@@ -4,6 +4,11 @@
     "keywords": ["perpl", "propel", "orm", "persistence"],
     "type": "symfony-bundle",
     "license": "MIT",
+    "homepage": "https://perplorm.github.io",
+    "support": {
+        "issues": "https://github.com/perplorm/PerplBundle/issues",
+        "source": "https://github.com/perplorm/PerplBundle"
+    },
     "authors": [{
         "name": "William Durand",
         "email": "william.durand1@gmail.com"
