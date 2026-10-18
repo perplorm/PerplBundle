@@ -4,6 +4,9 @@ on:
   push:
   pull_request:
   workflow_dispatch:
+  schedule:
+    # weekly, to catch changes in Perpl, Propel2 and Symfony without a push
+    - cron: '0 6 * * 1'
 
 permissions:
   contents: read
