@@ -8,8 +8,6 @@
  * @license MIT License
  */
 
-declare(strict_types = 1);
-
 namespace Propel\Bundle\PropelBundle\Command;
 
 use Propel\Generator\Command\SqlInsertCommand as CommandSqlInsertCommand;

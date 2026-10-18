@@ -45,8 +45,6 @@
         </properties>
     </rule>
 
-    <rule ref="SlevomatCodingStandard.TypeHints.DeclareStrictTypes"/>
-
     <rule ref="SlevomatCodingStandard.Namespaces.ReferenceUsedNamesOnly" >
         <properties>
             <property name="allowFallbackGlobalFunctions" value="false"/>

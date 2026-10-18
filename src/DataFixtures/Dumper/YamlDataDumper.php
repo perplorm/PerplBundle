@@ -8,8 +8,6 @@
  * @license MIT License
  */
 
-declare(strict_types = 1);
-
 namespace Propel\Bundle\PropelBundle\DataFixtures\Dumper;
 
 use Symfony\Component\Yaml\Yaml;

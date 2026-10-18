@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types = 1);
-
 namespace Propel\Bundle\PropelBundle;
 
 use Symfony\Component\DependencyInjection\ContainerInterface;

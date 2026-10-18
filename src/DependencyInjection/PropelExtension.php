@@ -8,8 +8,6 @@
  * @license MIT License
  */
 
-declare(strict_types = 1);
-
 namespace Propel\Bundle\PropelBundle\DependencyInjection;
 
 use Symfony\Component\Config\FileLocator;
