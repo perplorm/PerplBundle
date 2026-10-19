@@ -14,9 +14,12 @@ namespace Propel\Bundle\PropelBundle\Security\User;
 use Propel\Runtime\ActiveRecord\ActiveRecordInterface;
 use Symfony\Component\Security\Core\Exception\UnsupportedUserException;
 use Symfony\Component\Security\Core\Exception\UserNotFoundException;
+use Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface;
+use Symfony\Component\Security\Core\User\PasswordUpgraderInterface;
 use Symfony\Component\Security\Core\User\UserInterface;
 use Symfony\Component\Security\Core\User\UserProviderInterface;
 use function get_class;
+use function get_debug_type;
 use function is_subclass_of;
 use function json_encode;
 use function sprintf;
@@ -26,11 +29,13 @@ use function ucfirst;
 /**
  * Provides easy to use provisioning for Propel model users.
  *
+ * Password upgrades are delegated to the Query class when it implements PasswordUpgraderInterface.
+ *
  * @author William DURAND <william.durand1@gmail.com>
  *
  * @implements \Symfony\Component\Security\Core\User\UserProviderInterface<\Symfony\Component\Security\Core\User\UserInterface>
  */
-class PropelUserProvider implements UserProviderInterface
+class PropelUserProvider implements UserProviderInterface, PasswordUpgraderInterface
 {
     /**
      * A Model class name.
@@ -118,6 +123,26 @@ class PropelUserProvider implements UserProviderInterface
         }
 
         return $refreshedUser;
+    }
+
+    /**
+     * @param \Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface $user
+     * @param string $newHashedPassword
+     *
+     * @throws \Symfony\Component\Security\Core\Exception\UnsupportedUserException
+     *
+     * @return void
+     */
+    public function upgradePassword(PasswordAuthenticatedUserInterface $user, string $newHashedPassword): void
+    {
+        if (!$user instanceof $this->class) {
+            throw new UnsupportedUserException(sprintf('Instances of "%s" are not supported.', get_debug_type($user)));
+        }
+
+        $query = $this->queryClass::create();
+        if ($query instanceof PasswordUpgraderInterface) {
+            $query->upgradePassword($user, $newHashedPassword);
+        }
     }
 
     /**

@@ -105,6 +105,24 @@ public function __construct(
 }
 ```
 
+### User provider
+
+The `propel` user provider loads users through the Query class of the configured model. Symfony rehashes a password on login when the hashing configuration changed, and the provider hands that to the Query class when it implements `PasswordUpgraderInterface`, so the upgrade lives next to the other queries of the model:
+
+```php
+use Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface;
+use Symfony\Component\Security\Core\User\PasswordUpgraderInterface;
+
+class UserQuery extends BaseUserQuery implements PasswordUpgraderInterface
+{
+    public function upgradePassword(PasswordAuthenticatedUserInterface $user, string $newHashedPassword): void
+    {
+        $user->setPassword($newHashedPassword);
+        $user->save();
+    }
+}
+```
+
 ### Messenger transport
 
 With [symfony/messenger](https://symfony.com/doc/current/messenger.html) installed, the `propel://` transport stores messages in a table of a Propel connection, the way Symfony's Doctrine transport does. The DSN names the connection:
