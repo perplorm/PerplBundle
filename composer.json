@@ -34,6 +34,8 @@
     },
     "require": {
         "php": ">=8.2",
+        "ext-pdo": "*",
+        "ext-simplexml": "*",
         "propel/propel": "^2.0.0-beta4||dev-main",
         "symfony/console": "^7.4||^8.0",
         "symfony/dependency-injection": "^7.4||^8.0",
@@ -43,26 +45,28 @@
         "symfony/yaml": "^7.4||^8.0"
     },
     "require-dev": {
-        "ext-json": "*",
-        "ext-simplexml": "*",
-        "ext-pdo": "*",
         "perplorm/perpl": "^2.10",
         "phpunit/phpunit": "^11.5||^12.0",
         "symfony/form": "^7.4||^8.0",
-        "fakerphp/faker": "*",
+        "fakerphp/faker": "^1.23",
         "mikey179/vfsstream": "^1.6",
         "phpstan/phpstan": "^2.1",
         "phpstan/extension-installer": "^1.1",
         "phpstan/phpstan-deprecation-rules": "^2.0",
         "phpstan/phpstan-symfony": "^2.0",
-        "twig/twig": "*",
+        "twig/twig": "^3.0",
         "symfony/stopwatch": "^7.4||^8.0",
         "symfony/web-profiler-bundle": "^7.4||^8.0",
         "spryker/code-sniffer": "^0.17.2",
-        "symfony/messenger": "^7.4||^8.0"
+        "symfony/messenger": "^7.4||^8.0",
+        "symfony/validator": "^7.4||^8.0"
     },
     "suggest": {
-        "symfony/messenger": "To store Messenger messages in a Propel connection with the propel:// transport"
+        "symfony/form": "To use the model form type and build forms from Propel models",
+        "symfony/messenger": "To store Messenger messages in a Propel connection with the propel:// transport",
+        "symfony/twig-bundle": "To use the Twig filters and render the profiler panel templates",
+        "symfony/validator": "To validate models with the unique object constraint",
+        "symfony/web-profiler-bundle": "To show Propel queries and configuration in the Symfony profiler"
     },
     "config": {
         "allow-plugins": {
