@@ -37,6 +37,7 @@ use Symfony\Component\Messenger\Transport\TransportInterface;
 use Throwable;
 use function array_map;
 use function ceil;
+use function function_exists;
 use function implode;
 use function in_array;
 use function is_array;
@@ -47,8 +48,12 @@ use function json_decode;
 use function json_encode;
 use function max;
 use function method_exists;
+use function pcntl_async_signals;
+use function pcntl_signal_dispatch;
+use function random_int;
 use function sprintf;
 use function str_contains;
+use function usleep;
 use const JSON_THROW_ON_ERROR;
 
 /**
@@ -69,9 +74,21 @@ final class PropelTransport implements TransportInterface, SetupableTransportInt
     private const AVAILABLE_CONDITION = 'queue_name = :queue AND (delivered_at IS NULL OR delivered_at < :redeliver) AND available_at <= :now';
 
     /**
+     * How often a deadlock or lock wait timeout is tolerated before it fails the operation.
+     *
+     * @var int
+     */
+    private const MAX_RETRIES = 3;
+
+    /**
      * @var bool
      */
     private bool $setUp = false;
+
+    /**
+     * @var int
+     */
+    private int $retryingSafetyCounter = 0;
 
     /**
      * @param \Symfony\Component\Messenger\Transport\Serialization\SerializerInterface $serializer
@@ -127,9 +144,13 @@ final class PropelTransport implements TransportInterface, SetupableTransportInt
     }
 
     /**
-     * Receives the messages available first and marks them delivered, in one transaction.
+     * Receives the messages available first and marks them delivered.
+     *
+     * A deadlock or lock wait timeout yields no messages, to be resolved by the next call; it fails only when it keeps happening.
      *
      * @param int $fetchSize how many messages to receive at most
+     *
+     * @throws \Symfony\Component\Messenger\Exception\TransportException
      *
      * @return list<\Symfony\Component\Messenger\Envelope>
      */
@@ -138,7 +159,47 @@ final class PropelTransport implements TransportInterface, SetupableTransportInt
         $fetchSize = max(1, $fetchSize);
         $now = $this->getNow();
 
-        $rows = $this->guard(function () use ($fetchSize, $now): array {
+        // Signals arriving while the driver waits on the database are dropped when that wait ends in an exception, as a
+        // lock timeout does. Holding them until the query is over keeps the keepalive alarm armed and the worker stoppable.
+        $asyncSignals = function_exists('pcntl_async_signals') && function_exists('pcntl_signal_dispatch') && pcntl_async_signals(false);
+
+        try {
+            $rows = $this->receive($fetchSize, $now);
+            $this->retryingSafetyCounter = 0;
+        } catch (TransportException $exception) {
+            // a deadlock or lock wait timeout is likely resolved by the next call, unless it keeps happening
+            if (!$this->isLockFailure($exception)) {
+                throw $exception;
+            }
+
+            if (++$this->retryingSafetyCounter >= self::MAX_RETRIES) {
+                $this->retryingSafetyCounter = 0;
+
+                throw $exception;
+            }
+
+            return [];
+        } finally {
+            if ($asyncSignals) {
+                pcntl_async_signals(true);
+                pcntl_signal_dispatch();
+            }
+        }
+
+        return array_map($this->decodeRow(...), $rows);
+    }
+
+    /**
+     * Selects the messages available first and marks them delivered, in one transaction.
+     *
+     * @param int $fetchSize
+     * @param \DateTimeImmutable $now
+     *
+     * @return list<array<mixed>>
+     */
+    private function receive(int $fetchSize, DateTimeImmutable $now): array
+    {
+        return $this->guard(function () use ($fetchSize, $now): array {
             $connection = $this->getConnection();
 
             return $connection->transaction(function () use ($connection, $fetchSize, $now): array {
@@ -165,8 +226,6 @@ final class PropelTransport implements TransportInterface, SetupableTransportInt
                 return $rows;
             });
         });
-
-        return array_map($this->decodeRow(...), $rows);
     }
 
     /**
@@ -281,11 +340,75 @@ final class PropelTransport implements TransportInterface, SetupableTransportInt
             throw new LogicException('No PropelReceivedStamp found on the Envelope.');
         }
 
-        $this->guard(fn () => $this->execute(
+        $this->retryOnLockFailure(fn () => $this->guard(fn () => $this->execute(
             $this->getConnection(),
             sprintf('DELETE FROM %s WHERE id = :id', $this->tableName),
             ['id' => $stamp->id],
-        ));
+        )));
+    }
+
+    /**
+     * Repeats an operation a few times, after growing random pauses, as long as the database reports a deadlock or a lock wait timeout.
+     *
+     * @param callable(): mixed $operation
+     *
+     * @throws \Symfony\Component\Messenger\Exception\TransportException
+     *
+     * @return void
+     */
+    private function retryOnLockFailure(callable $operation): void
+    {
+        $delay = 100;
+
+        for ($retries = 0;; $retries++) {
+            try {
+                $operation();
+
+                return;
+            } catch (TransportException $exception) {
+                if ($retries >= self::MAX_RETRIES || !$this->isLockFailure($exception)) {
+                    throw $exception;
+                }
+
+                $delay *= 2;
+                $jitter = (int)($delay * 0.1);
+                usleep(($delay + random_int(-$jitter, $jitter)) * 1000);
+            }
+        }
+    }
+
+    /**
+     * Whether the failure is a deadlock or a lock wait timeout, which another attempt may not run into.
+     *
+     * @param \Throwable $exception
+     *
+     * @return bool
+     */
+    private function isLockFailure(Throwable $exception): bool
+    {
+        for (; $exception !== null; $exception = $exception->getPrevious()) {
+            if (!$exception instanceof PDOException) {
+                continue;
+            }
+
+            $adapter = Propel::getServiceContainer()->getAdapter($this->connectionName);
+
+            if ($adapter instanceof MysqlAdapter) {
+                // ER_LOCK_DEADLOCK and ER_LOCK_WAIT_TIMEOUT
+                return in_array($exception->errorInfo[1] ?? null, [1213, 1205], true);
+            }
+
+            if ($adapter instanceof PgsqlAdapter) {
+                // serialization_failure and deadlock_detected
+                return in_array($exception->errorInfo[0] ?? $exception->getCode(), ['40001', '40P01'], true);
+            }
+
+            if ($adapter instanceof SqliteAdapter) {
+                return str_contains($exception->getMessage(), 'database is locked');
+            }
+        }
+
+        return false;
     }
 
     /**

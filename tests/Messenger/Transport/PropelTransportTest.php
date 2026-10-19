@@ -7,6 +7,7 @@ use PDO;
 use Propel\Bundle\PropelBundle\Messenger\Transport\PropelReceivedStamp;
 use Propel\Bundle\PropelBundle\Messenger\Transport\PropelTransport;
 use Propel\Bundle\PropelBundle\Tests\Functional\TestKernel;
+use Propel\Runtime\Connection\ConnectionManagerSingle;
 use Propel\Runtime\Propel;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 use Symfony\Component\Clock\MockClock;
@@ -215,6 +216,60 @@ class PropelTransportTest extends KernelTestCase
         $this->assertSame(1, $other->getMessageCount(), 'Should use the existing table and its messages');
     }
 
+    public function testGetYieldsNothingOnALockFailureUntilItKeepsHappening(): void
+    {
+        [$transport, $connection] = $this->createFlakyTransport();
+        $transport->send(new Envelope(new TestMessage('content')));
+
+        $connection->failures = 2;
+        $this->assertSame([], $transport->get(), 'Should leave the message to the next call');
+        $this->assertSame([], $transport->get());
+        $transport->ack($this->getSingleEnvelopeOf($transport, 'content'));
+
+        $transport->send(new Envelope(new TestMessage('content')));
+        $connection->failures = 2;
+        $this->assertSame([], $transport->get());
+        $this->assertSame([], $transport->get(), 'Should have forgotten the earlier failures after a success');
+        $this->assertSame(['content'], $this->getContents($transport->get()));
+
+        $connection->failures = 3;
+        $this->assertSame([], $transport->get());
+        $this->assertSame([], $transport->get());
+
+        $this->expectException(TransportException::class);
+        $transport->get();
+    }
+
+    public function testAckRetriesOnLockFailures(): void
+    {
+        [$transport, $connection] = $this->createFlakyTransport();
+        $transport->send(new Envelope(new TestMessage('content')));
+        $envelope = $this->getSingleEnvelopeOf($transport, 'content');
+
+        $connection->failures = 2;
+        $transport->ack($envelope);
+
+        $this->assertSame(0, $connection->failures, 'Should have retried until the lock was gone');
+        $this->assertSame('0', $this->fetchColumn('SELECT COUNT(*) FROM messenger_message'), 'Should have deleted the message');
+    }
+
+    public function testRejectGivesUpAfterRepeatedLockFailures(): void
+    {
+        [$transport, $connection] = $this->createFlakyTransport();
+        $transport->send(new Envelope(new TestMessage('content')));
+        $envelope = $this->getSingleEnvelopeOf($transport, 'content');
+
+        $connection->failures = 5;
+
+        try {
+            $transport->reject($envelope);
+            $this->fail('Should give up');
+        } catch (TransportException $exception) {
+            $this->assertSame(1, $connection->failures, 'Should have tried four times');
+            $this->assertStringContainsString('database is locked', $exception->getMessage());
+        }
+    }
+
     public function testUnknownConnectionsFailWithATransportException(): void
     {
         $transport = new PropelTransport(new PhpSerializer(), $this->clock, 'unknown', self::QUEUE_NAME, 3600, 'messenger_message', false);
@@ -228,10 +283,39 @@ class PropelTransportTest extends KernelTestCase
         return new PropelTransport(new PhpSerializer(), $this->clock, 'default', $queueName, 3600, $tableName, $autoSetup);
     }
 
+    /**
+     * A transport on a connection sharing the test database, which fails as often as asked.
+     *
+     * @return array{PropelTransport, FlakyConnection}
+     */
+    private function createFlakyTransport(): array
+    {
+        $this->transport->setup();
+
+        $connection = new FlakyConnection($this->getConnection()->getWrappedConnection() ?? $this->fail('Should wrap a connection'));
+        $manager = new ConnectionManagerSingle('flaky');
+        $manager->setConnection($connection);
+
+        $serviceContainer = Propel::getServiceContainer();
+        $serviceContainer->setAdapterClass('flaky', 'sqlite');
+        $serviceContainer->setConnectionManager($manager);
+
+        return [new PropelTransport(new PhpSerializer(), $this->clock, 'flaky', self::QUEUE_NAME, 3600, 'messenger_message', false), $connection];
+    }
+
     private function getSingleEnvelope(): Envelope
     {
-        $envelopes = [...$this->transport->get()];
+        return $this->getSingleEnvelopeOf($this->transport);
+    }
+
+    private function getSingleEnvelopeOf(PropelTransport $transport, ?string $content = null): Envelope
+    {
+        $envelopes = [...$transport->get()];
         $this->assertCount(1, $envelopes);
+
+        if ($content !== null) {
+            $this->assertSame($content, $this->getContent($envelopes[0]));
+        }
 
         return $envelopes[0];
     }
