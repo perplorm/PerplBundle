@@ -9,10 +9,20 @@
         "issues": "https://github.com/perplorm/PerplBundle/issues",
         "source": "https://github.com/perplorm/PerplBundle"
     },
-    "authors": [{
-        "name": "William Durand",
-        "email": "william.durand1@gmail.com"
-    }],
+    "authors": [
+        {
+            "name": "Sam Hauglustaine",
+            "role": "Maintainer"
+        },
+        {
+            "name": "PerplBundle contributors",
+            "homepage": "https://github.com/perplorm/PerplBundle/graphs/contributors"
+        },
+        {
+            "name": "William Durand",
+            "role": "Original author of PropelBundle"
+        }
+    ],
     "conflict": {
         "perplorm/perpl": "<2.10"
     },
