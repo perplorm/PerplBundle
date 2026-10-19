@@ -15,6 +15,7 @@ use Propel\Bundle\PropelBundle\DependencyInjection\Security\UserProvider\PropelF
 use Propel\Runtime\Connection\ConnectionManagerPrimaryReplica;
 use Propel\Runtime\Connection\ConnectionManagerSingle;
 use Propel\Runtime\Propel;
+use Psr\Log\LoggerInterface;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\HttpKernel\Bundle\Bundle;
 use function array_merge;
@@ -43,16 +44,18 @@ class PropelBundle extends Bundle
      */
     public function boot(): void
     {
-        try {
-            $this->configureConnections();
+        $this->configureConnections();
 
-            // the container only resets the services it has instantiated
-            $this->container->get('propel.instance_pool_resetter');
+        // the container only resets the services it has instantiated
+        $this->container->get('propel.instance_pool_resetter');
 
-            if ($this->container->getParameter('propel.logging')) {
+        if ($this->container->getParameter('propel.logging')) {
+            try {
                 $this->configureLogging();
+            } catch (Exception $e) {
+                // debug-mode logging opens the connections eagerly, and the database may not exist yet when the propel:* commands set it up
+                $this->getLogger()?->warning('Propel query logging could not be enabled: ' . $e->getMessage(), ['exception' => $e]);
             }
-        } catch (Exception $e) {
         }
     }
 
@@ -132,5 +135,22 @@ class PropelBundle extends Bundle
             $connection = $manager->getWriteConnection($serviceContainer->getAdapter($manager->getName()));
             $connection->setLogMethods(array_merge($connection->getLogMethods(), ['prepare']));
         }
+    }
+
+    /**
+     * The application logger, which is a private service, so the bundle reaches it through a locator.
+     *
+     * @return \Psr\Log\LoggerInterface|null
+     */
+    private function getLogger(): ?LoggerInterface
+    {
+        if (!$this->container->has('propel.logger_locator')) {
+            return null;
+        }
+
+        /** @var \Psr\Container\ContainerInterface $locator */
+        $locator = $this->container->get('propel.logger_locator');
+
+        return $locator->has('logger') ? $locator->get('logger') : null;
     }
 }

@@ -16,6 +16,7 @@ use Propel\Bundle\PropelBundle\Twig\Extension\SyntaxExtension;
 use Propel\Runtime\Connection\ConnectionInterface;
 use Propel\Runtime\Propel;
 use Propel\Runtime\ServiceContainer\ServiceContainerInterface;
+use Symfony\Component\DependencyInjection\ServiceLocator;
 
 return static function (ContainerConfigurator $container): void {
     $container->parameters()
@@ -47,6 +48,12 @@ return static function (ContainerConfigurator $container): void {
             ->args([service('logger')->nullOnInvalid(), service('debug.stopwatch')->nullOnInvalid()])
             ->tag('monolog.logger', ['channel' => 'propel'])
             ->tag('kernel.reset', ['method' => 'reset'])
+
+        // the application logger, for the bundle to report from boot() that it could not enable the query logging
+        ->set('propel.logger_locator', ServiceLocator::class)
+            ->public()
+            ->args([['logger' => service('logger')->ignoreOnInvalid()]])
+            ->tag('container.service_locator')
 
         ->set('propel.instance_pool_resetter', InstancePoolResetter::class)
             ->public()
