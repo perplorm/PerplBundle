@@ -72,6 +72,36 @@ class PropelTransportTest extends KernelTestCase
         $this->assertSame('0', $this->fetchColumn('SELECT COUNT(*) FROM messenger_message'), 'Should delete acknowledged messages');
     }
 
+    public function testGetReceivesSeveralMessagesAtOnce(): void
+    {
+        $other = $this->createTransport('messenger_message', true, 'other_queue');
+        $other->send(new Envelope(new TestMessage('other')));
+
+        foreach (['first', 'second', 'third'] as $content) {
+            $this->transport->send(new Envelope(new TestMessage($content)));
+            $this->clock->sleep(1);
+        }
+        $this->transport->send(new Envelope(new TestMessage('later'), [new DelayStamp(10000)]));
+
+        $this->assertSame(['first', 'second'], $this->getContents($this->transport->get(2)), 'Should receive the messages available first, in order');
+        $this->assertSame(['third'], $this->getContents($this->transport->get(5)), 'Should mark the received messages delivered and leave out the delayed message and other queues');
+        $this->assertSame([], $this->getContents($this->transport->get(5)));
+
+        $this->clock->sleep(10);
+
+        $this->assertSame(['later'], $this->getContents($this->transport->get(5)), 'Should receive the delayed message once it is available');
+        $this->assertSame(['other'], $this->getContents($other->get(5)), 'Should leave the other queue untouched');
+    }
+
+    public function testGetReceivesOneMessageByDefault(): void
+    {
+        $this->transport->send(new Envelope(new TestMessage('first')));
+        $this->transport->send(new Envelope(new TestMessage('second')));
+
+        $this->assertSame(['first'], $this->getContents($this->transport->get()));
+        $this->assertSame(['second'], $this->getContents($this->transport->get(0)), 'Should receive at least one message');
+    }
+
     public function testGetRedeliversAfterTheTimeout(): void
     {
         $sent = $this->transport->send(new Envelope(new TestMessage('content')));
@@ -204,6 +234,16 @@ class PropelTransportTest extends KernelTestCase
         $this->assertCount(1, $envelopes);
 
         return $envelopes[0];
+    }
+
+    /**
+     * @param iterable<Envelope> $envelopes
+     *
+     * @return list<string>
+     */
+    private function getContents(iterable $envelopes): array
+    {
+        return array_map($this->getContent(...), [...$envelopes]);
     }
 
     private function getContent(Envelope $envelope): string

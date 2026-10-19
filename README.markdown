@@ -112,7 +112,7 @@ The options mirror those of the Doctrine transport, as query parameters of the D
 | `table_name` | `messenger_message` | The table storing the messages. |
 | `auto_setup` | `true` | Create the table when a query finds it missing. |
 
-Timestamps are stored in UTC. On MySQL, MariaDB and PostgreSQL, workers lock the rows they receive with `FOR UPDATE SKIP LOCKED`, so several workers can consume the same queue.
+Timestamps are stored in UTC. On MySQL, MariaDB and PostgreSQL, workers lock the rows they receive with `FOR UPDATE SKIP LOCKED`, so several workers can consume the same queue. A worker receives one message per query, or as many as the `--fetch-size` option of `messenger:consume` asks for (Symfony 8.1+).
 
 The table is created when it turns out to be missing, or by `bin/console messenger:setup-transports`, on MySQL, MariaDB, PostgreSQL and SQLite. When Propel migrations manage your schema, declare the table in your `schema.xml` instead and set `auto_setup` to `false`:
 
