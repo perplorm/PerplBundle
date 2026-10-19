@@ -39,10 +39,7 @@ class PropelExtension extends Extension
         $configuration = $this->getConfiguration($configs, $container);
         $config = $this->processConfiguration($configuration, $configs);
 
-        // The first connection is the default one unless the configuration names another
-        $defaultConnection = !empty($config['runtime']['defaultConnection'])
-            ? $config['runtime']['defaultConnection']
-            : array_key_first($config['database']['connections']);
+        $defaultConnection = $this->resolveDefaultConnection($config);
         $config['runtime']['defaultConnection'] = $defaultConnection;
 
         if (count($config['database']['connections']) === 1 && !isset($config['generator']['defaultConnection'])) {
@@ -67,6 +64,28 @@ class PropelExtension extends Extension
         }
 
         $this->loadConnections(array_keys($config['database']['connections']), $defaultConnection, $container);
+    }
+
+    /**
+     * The default connection is the one `runtime.defaultConnection` names, else the only one, else the one named
+     * `default`, else the first one.
+     *
+     * @param array<mixed> $config
+     *
+     * @return string
+     */
+    protected function resolveDefaultConnection(array $config): string
+    {
+        if (!empty($config['runtime']['defaultConnection'])) {
+            return $config['runtime']['defaultConnection'];
+        }
+
+        $connections = $config['database']['connections'];
+        if (count($connections) > 1 && isset($connections['default'])) {
+            return 'default';
+        }
+
+        return array_key_first($connections);
     }
 
     /**

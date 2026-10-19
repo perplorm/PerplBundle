@@ -3,6 +3,7 @@
 namespace Symfony\Component\DependencyInjection\Loader\Configurator;
 
 use Propel\Bundle\PropelBundle\DataCollector\PropelDataCollector;
+use Propel\Bundle\PropelBundle\DataFixtures\Dumper\DataDumperInterface;
 use Propel\Bundle\PropelBundle\DataFixtures\Dumper\YamlDataDumper;
 use Propel\Bundle\PropelBundle\DataFixtures\Loader\XmlDataLoader;
 use Propel\Bundle\PropelBundle\DataFixtures\Loader\YamlDataLoader;
@@ -70,5 +71,13 @@ return static function (ContainerConfigurator $container): void {
 
         ->set('propel.loader.xml', '%propel.loader.xml.class%')
             ->public()
-            ->args(['%kernel.project_dir%', '%propel.configuration%']);
+            ->args(['%kernel.project_dir%', '%propel.configuration%'])
+
+        // autowiring by class, as when the bundle autowired all of its classes
+        ->alias(SchemaLocator::class, 'propel.schema_locator')
+        ->alias(PropelLogger::class, 'propel.logger')
+        ->alias(YamlDataDumper::class, 'propel.dumper.yaml')
+        ->alias(DataDumperInterface::class, 'propel.dumper.yaml')
+        ->alias(YamlDataLoader::class, 'propel.loader.yaml')
+        ->alias(XmlDataLoader::class, 'propel.loader.xml');
 };
