@@ -70,6 +70,8 @@ class PropelExtension extends Extension
             }
         }
 
+        $container->getDefinition('propel.instance_pool_resetter')->replaceArgument(0, array_keys($config['database']['connections']));
+
         $this->loadConnections(array_keys($config['database']['connections']), $defaultConnection, $container);
     }
 

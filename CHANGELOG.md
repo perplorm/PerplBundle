@@ -10,6 +10,7 @@ All notable changes are documented here. The project follows [Semantic Versionin
 * Autowire the bundle's main classes by type again: `SchemaLocator`, `PropelLogger`, `YamlDataDumper`, `YamlDataLoader` and `XmlDataLoader` resolve to their `propel.*` services.
 * Keep the former command service IDs, `propel_bundle_propel.command.*`, as deprecated aliases of the commands.
 * Let the Messenger transport receive several messages per query, as asked by `messenger:consume --fetch-size` in Symfony 8.1+.
+* Empty the instance pools of all connections when Symfony resets its services, so Messenger workers and worker runtimes do not keep the objects of a previous message or request.
 
 ## 1.0.0-RC2 (2026-10-19)
 

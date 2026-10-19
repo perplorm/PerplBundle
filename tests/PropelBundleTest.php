@@ -7,6 +7,7 @@ namespace Propel\Bundle\PropelBundle\Tests;
 
 use Propel\Bundle\PropelBundle\Logger\PropelLogger;
 use Propel\Bundle\PropelBundle\PropelBundle;
+use Propel\Bundle\PropelBundle\Service\InstancePoolResetter;
 use Propel\Bundle\PropelBundle\Tests\TestCase;
 use Propel\Common\Config\ConfigurationManager;
 use Propel\Common\Config\FileLocator;
@@ -225,6 +226,8 @@ class PropelBundleTest extends TestCase
         if ($logger !== false) {
             $container->set('propel.logger', $logger);
         }
+        // the bundle instantiates the resetter when it boots
+        $container->set('propel.instance_pool_resetter', new InstancePoolResetter(array_keys($configuration['database']['connections'])));
         // required to be set value dosant really mater
         $container->setParameter('propel.logging', (bool)$logger);
 

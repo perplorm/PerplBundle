@@ -10,6 +10,7 @@ use Propel\Bundle\PropelBundle\DataFixtures\Loader\YamlDataLoader;
 use Propel\Bundle\PropelBundle\Form\Type\ModelType;
 use Propel\Bundle\PropelBundle\Form\TypeGuesser;
 use Propel\Bundle\PropelBundle\Logger\PropelLogger;
+use Propel\Bundle\PropelBundle\Service\InstancePoolResetter;
 use Propel\Bundle\PropelBundle\Service\SchemaLocator;
 use Propel\Bundle\PropelBundle\Twig\Extension\SyntaxExtension;
 use Propel\Runtime\Connection\ConnectionInterface;
@@ -45,6 +46,11 @@ return static function (ContainerConfigurator $container): void {
             ->public()
             ->args([service('logger')->nullOnInvalid(), service('debug.stopwatch')->nullOnInvalid()])
             ->tag('monolog.logger', ['channel' => 'propel'])
+            ->tag('kernel.reset', ['method' => 'reset'])
+
+        ->set('propel.instance_pool_resetter', InstancePoolResetter::class)
+            ->public()
+            ->args([abstract_arg('the configured connection names')])
             ->tag('kernel.reset', ['method' => 'reset'])
 
         ->set('propel.data_collector', '%propel.data_collector.class%')

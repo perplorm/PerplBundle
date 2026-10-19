@@ -46,6 +46,9 @@ class PropelBundle extends Bundle
         try {
             $this->configureConnections();
 
+            // the container only resets the services it has instantiated
+            $this->container->get('propel.instance_pool_resetter');
+
             if ($this->container->getParameter('propel.logging')) {
                 $this->configureLogging();
             }
