@@ -39,19 +39,23 @@ class PropelExtension extends Extension
         $configuration = $this->getConfiguration($configs, $container);
         $config = $this->processConfiguration($configuration, $configs);
 
-        // The first connection is the default one unless the configuration names another
-        $defaultConnection = !empty($config['runtime']['defaultConnection'])
-            ? $config['runtime']['defaultConnection']
-            : array_key_first($config['database']['connections']);
+        $connections = $config['database']['connections'];
+        $configuredDefault = !empty($config['runtime']['defaultConnection']) ? $config['runtime']['defaultConnection'] : null;
+
+        // the runtime default is the one the configuration names, else the first one
+        $defaultConnection = $configuredDefault ?? array_key_first($connections);
         $config['runtime']['defaultConnection'] = $defaultConnection;
 
-        if (count($config['database']['connections']) === 1 && !isset($config['generator']['defaultConnection'])) {
+        // the commands fall back to the connection named "default", as they always did
+        $commandConnection = $configuredDefault ?? (isset($connections['default']) ? 'default' : $defaultConnection);
+
+        if (count($connections) === 1 && !isset($config['generator']['defaultConnection'])) {
             $config['generator']['defaultConnection'] = $defaultConnection;
         }
 
         $container->setParameter('propel.logging', $config['runtime']['logging']);
         $container->setParameter('propel.configuration', $config);
-        $container->setParameter('propel.dbal.default_connection', $defaultConnection);
+        $container->setParameter('propel.dbal.default_connection', $commandConnection);
 
         // Load services
         if (!$container->hasDefinition('propel')) {

@@ -6,7 +6,9 @@ All notable changes are documented here. The project follows [Semantic Versionin
 ## Unreleased
 
 * Register each connection as a service, `propel.<name>_connection`, with `propel.connection` for the default one, and autowire `ConnectionInterface` arguments to them.
-* The `propel.dbal.default_connection` parameter now holds the configured default connection instead of always `default`.
+* `runtime.defaultConnection` is always filled in: the configured one, else the first connection. The `propel.dbal.default_connection` parameter the commands use follows the configured one too, and still falls back to the connection named `default` when there is one.
+* Autowire the bundle's main classes by type again: `SchemaLocator`, `PropelLogger`, `YamlDataDumper`, `YamlDataLoader` and `XmlDataLoader` resolve to their `propel.*` services.
+* Keep the former command service IDs, `propel_bundle_propel.command.*`, as deprecated aliases of the commands.
 * Let the Messenger transport receive several messages per query, as asked by `messenger:consume --fetch-size` in Symfony 8.1+.
 
 ## 1.0.0-RC2 (2026-10-19)
