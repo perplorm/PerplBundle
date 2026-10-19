@@ -160,7 +160,7 @@ final class PropelTransport implements TransportInterface, SetupableTransportInt
         $now = $this->getNow();
 
         // Signals arriving while the driver waits on the database are dropped when that wait ends in an exception, as a
-        // lock timeout does. Holding them until the query is over keeps the keepalive alarm armed and the worker stoppable.
+        // lock timeout does. Holding them until the query is over keeps the worker stoppable.
         $asyncSignals = function_exists('pcntl_async_signals') && function_exists('pcntl_signal_dispatch') && pcntl_async_signals(false);
 
         try {
