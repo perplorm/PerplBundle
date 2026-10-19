@@ -24,7 +24,7 @@ Keep requiring Propel2 from its `master` branch, or switch to Perpl (see below).
 * The services `propel.schema_locator`, `propel.logger`, `propel.data_collector`, `propel.twig.extension.syntax`, `form.type_guesser.propel`, `propel.form.type.model`, `propel.dumper.yaml`, `propel.loader.yaml`, `propel.loader.xml` and `propel.security.user.provider`, and their `*.class` parameters.
 * The `propel:*` console commands, and the `@Propel` Twig namespace.
 * Autowiring `SchemaLocator`, `PropelLogger`, `YamlDataDumper`, `YamlDataLoader` and `XmlDataLoader` by type. They now resolve to the shared services listed above; the bundle no longer registers every one of its classes as a service.
-* The default connection: the one `runtime.defaultConnection` names, else the only one, else the one named `default`. With several connections and none named `default`, the first one is now the default where the bundle used to fail.
+* The default connection at runtime: the one `runtime.defaultConnection` names, else the first one. The commands' `propel.dbal.default_connection` parameter still falls back to the connection named `default`; it now follows `runtime.defaultConnection` when set, and the runtime default when no connection is named `default`.
 
 ## Changed
 

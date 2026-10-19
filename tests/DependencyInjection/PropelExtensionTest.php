@@ -139,7 +139,7 @@ class PropelExtensionTest extends TestCase
         $this->assertCount(17, array_filter(array_keys($container->getAliases()), static fn (string $alias): bool => str_starts_with($alias, 'propel_bundle_propel.command.')));
     }
 
-    public function testDefaultConnectionIsTheOneNamedDefault(): void
+    public function testTheCommandsFallBackToTheConnectionNamedDefault(): void
     {
         $container = $this->load([
             'database' => [
@@ -150,12 +150,13 @@ class PropelExtensionTest extends TestCase
             ],
         ]);
 
+        // the runtime default is still the first connection
         $this->assertSame('default', $container->getParameter('propel.dbal.default_connection'));
-        $this->assertSame('default', $container->getParameter('propel.configuration')['runtime']['defaultConnection']);
-        $this->assertSame('propel.default_connection', (string) $container->getAlias('propel.connection'));
+        $this->assertSame('other', $container->getParameter('propel.configuration')['runtime']['defaultConnection']);
+        $this->assertSame('propel.other_connection', (string) $container->getAlias('propel.connection'));
     }
 
-    public function testDefaultConnectionIsTheFirstOneWithoutOneNamedDefault(): void
+    public function testDefaultConnectionIsTheFirstOne(): void
     {
         $container = $this->load([
             'database' => [
