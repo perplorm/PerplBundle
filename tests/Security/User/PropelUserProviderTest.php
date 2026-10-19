@@ -12,8 +12,13 @@ namespace Propel\Bundle\PropelBundle\Tests\Security\User;
 
 use Propel\Bundle\PropelBundle\Security\User\PropelUserProvider;
 use Propel\Bundle\PropelBundle\Tests\Fixtures\Model\User;
+use Propel\Bundle\PropelBundle\Tests\Fixtures\Security\PlainUser;
+use Propel\Bundle\PropelBundle\Tests\Fixtures\Security\UpgradableUser;
+use Propel\Bundle\PropelBundle\Tests\Fixtures\Security\UpgradableUserQuery;
 use Propel\Bundle\PropelBundle\Tests\TestCase;
+use Symfony\Component\Security\Core\Exception\UnsupportedUserException;
 use Symfony\Component\Security\Core\Exception\UserNotFoundException;
+use Symfony\Component\Security\Core\User\PasswordUpgraderInterface;
 
 /**
  * @author William Durand <william.durand1@gmail.com>
@@ -106,5 +111,39 @@ class PropelUserProviderTest extends TestCase
         $this->expectUserDeprecationMessage('Since perplorm/perpl-bundle 1.0: Method "Propel\Bundle\PropelBundle\Security\User\PropelUserProvider::loadUserByUsername()" is deprecated, use "loadUserByIdentifier()" instead.');
 
         $this->assertInstanceOf(User::class, $provider->loadUserByUsername('user3'));
+    }
+
+    public function testUpgradePasswordDelegatesToTheQueryClass()
+    {
+        UpgradableUserQuery::$upgrades = [];
+        $user = new UpgradableUser('old');
+        $provider = new PropelUserProvider(UpgradableUser::class);
+
+        $this->assertInstanceOf(PasswordUpgraderInterface::class, $provider);
+
+        $provider->upgradePassword($user, 'new');
+
+        $this->assertSame([[$user, 'new']], UpgradableUserQuery::$upgrades);
+        $this->assertSame('new', $user->getPassword());
+    }
+
+    public function testUpgradePasswordDoesNothingWithoutAnUpgradingQueryClass()
+    {
+        $user = new PlainUser('old');
+        $provider = new PropelUserProvider(PlainUser::class);
+
+        $provider->upgradePassword($user, 'new');
+
+        $this->assertSame('old', $user->getPassword());
+    }
+
+    public function testUpgradePasswordRejectsOtherUsers()
+    {
+        $provider = new PropelUserProvider(PlainUser::class);
+
+        $this->expectException(UnsupportedUserException::class);
+        $this->expectExceptionMessage('Instances of "Propel\Bundle\PropelBundle\Tests\Fixtures\Security\UpgradableUser" are not supported.');
+
+        $provider->upgradePassword(new UpgradableUser(), 'new');
     }
 }

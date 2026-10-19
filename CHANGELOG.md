@@ -9,6 +9,7 @@ All notable changes are documented here. The project follows [Semantic Versionin
 * `runtime.defaultConnection` is always filled in: the configured one, else the first connection. The `propel.dbal.default_connection` parameter the commands use follows the configured one too, and still falls back to the connection named `default` when there is one.
 * Autowire the bundle's main classes by type again: `SchemaLocator`, `PropelLogger`, `YamlDataDumper`, `YamlDataLoader` and `XmlDataLoader` resolve to their `propel.*` services.
 * Keep the former command service IDs, `propel_bundle_propel.command.*`, as deprecated aliases of the commands.
+* The user provider implements `PasswordUpgraderInterface` and delegates password upgrades to the model's Query class when that implements the interface.
 * Let the Messenger transport receive several messages per query, as asked by `messenger:consume --fetch-size` in Symfony 8.1+.
 * Empty the instance pools of all connections when Symfony resets its services, so Messenger workers and worker runtimes do not keep the objects of a previous message or request.
 
