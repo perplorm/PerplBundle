@@ -13,7 +13,7 @@ namespace Propel\Bundle\PropelBundle\Service;
 use Propel\Runtime\Exception\PropelException;
 use Propel\Runtime\Propel;
 use Symfony\Contracts\Service\ResetInterface;
-use function method_exists;
+use function is_callable;
 
 /**
  * Empties the instance pools of all tables of the configured connections.
@@ -47,8 +47,9 @@ final class InstancePoolResetter implements ResetInterface
 
             foreach ($databaseMap->getTables() as $tableMap) {
                 // generated table maps pool their objects, a plain TableMap does not
-                if (method_exists($tableMap, 'clearInstancePool')) {
-                    $tableMap::clearInstancePool();
+                $clearInstancePool = [$tableMap::class, 'clearInstancePool'];
+                if (is_callable($clearInstancePool)) {
+                    $clearInstancePool();
                 }
             }
         }
