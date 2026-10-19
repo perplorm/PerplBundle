@@ -65,8 +65,14 @@ class TestKernel extends Kernel
             'database' => [
                 'connections' => [
                     'default' => ['adapter' => 'sqlite', 'dsn' => 'sqlite::memory:', 'user' => '', 'password' => ''],
+                    'other' => ['adapter' => 'sqlite', 'dsn' => 'sqlite::memory:', 'user' => '', 'password' => ''],
                 ],
             ],
         ]);
+
+        $container->services()
+            ->set(ConnectionConsumer::class)
+                ->autowire()
+                ->public();
     }
 }
