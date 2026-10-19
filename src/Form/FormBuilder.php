@@ -17,7 +17,6 @@ use function file_get_contents;
 use function lcfirst;
 use function sprintf;
 use function str_replace;
-use function strtolower;
 
 /**
  * @author Moritz Schroeder <moritz.schroeder@molabs.de>
@@ -41,7 +40,6 @@ class FormBuilder
         $formTypeContent = str_replace('##NAMESPACE##', $bundle->getNamespace() . str_replace('/', '\\', $formTypeNamespace), $formTypeContent);
         $formTypeContent = str_replace('##CLASS##', $modelName . 'Type', $formTypeContent);
         $formTypeContent = str_replace('##FQCN##', sprintf('%s\%s', $table->getNamespace(), $modelName), $formTypeContent);
-        $formTypeContent = str_replace('##TYPE_NAME##', strtolower($modelName), $formTypeContent);
         $formTypeContent = str_replace('##BUILD_CODE##', $this->buildFormFields($table), $formTypeContent);
 
         return $formTypeContent;
