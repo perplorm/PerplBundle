@@ -24,3 +24,8 @@ parameters:
       path: src/Util/ColumnTypeName.php
       identifiers: [function.alreadyNarrowedType, function.impossibleType, method.notFound]
       reportUnmatched: false
+    # MessageDecodingFailedException::wrap() exists as of Symfony 8.0; the other branch serves Symfony 7.4
+    -
+      path: src/Messenger/Transport/PropelTransport.php
+      identifier: function.alreadyNarrowedType
+      reportUnmatched: false

@@ -58,7 +58,11 @@
         "twig/twig": "*",
         "symfony/stopwatch": "^7.4||^8.0",
         "symfony/web-profiler-bundle": "^7.4||^8.0",
-        "spryker/code-sniffer": "^0.17.2"
+        "spryker/code-sniffer": "^0.17.2",
+        "symfony/messenger": "^7.4||^8.0"
+    },
+    "suggest": {
+        "symfony/messenger": "To store Messenger messages in a Propel connection with the propel:// transport"
     },
     "config": {
         "allow-plugins": {

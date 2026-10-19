@@ -64,7 +64,8 @@ Schemas are read from `config/*schema.xml`, from `propel/schema.xml` (see `prope
 * Loading SQL, YAML and XML fixtures;
 * Creating and dropping databases;
 * Integration with the Form, Security and Validator components;
-* Resolving model controller arguments from route parameters.
+* Resolving model controller arguments from route parameters;
+* Storing Symfony Messenger messages in a Propel connection.
 
 ### Controller arguments
 
@@ -88,6 +89,50 @@ public function books(#[MapModel(mapping: ['author_id' => 'id'], with: 'Book')] 
 ```
 
 A nullable argument receives `null` when nothing is found, otherwise a 404 is returned.
+
+### Messenger transport
+
+With [symfony/messenger](https://symfony.com/doc/current/messenger.html) installed, the `propel://` transport stores messages in a table of a Propel connection, the way Symfony's Doctrine transport does. The DSN names the connection:
+
+```yaml
+# config/packages/messenger.yaml
+framework:
+    messenger:
+        transports:
+            async: 'propel://default'
+            failed: 'propel://default?queue_name=failed'
+```
+
+The options mirror those of the Doctrine transport, as query parameters of the DSN or under the `options` key:
+
+| Option | Default | Description |
+|---|---|---|
+| `queue_name` | `default` | The queue the transport sends to and receives from. |
+| `redeliver_timeout` | `3600` | Seconds after which a message that was received but not acknowledged is delivered again. |
+| `table_name` | `messenger_message` | The table storing the messages. |
+| `auto_setup` | `true` | Create the table on first use. |
+
+Timestamps are stored in UTC. On MySQL, MariaDB and PostgreSQL, workers lock the rows they receive with `FOR UPDATE SKIP LOCKED`, so several workers can consume the same queue.
+
+The table is created on first use, or by `bin/console messenger:setup-transports`, on MySQL, MariaDB, PostgreSQL and SQLite. When Propel migrations manage your schema, declare the table in your `schema.xml` instead and set `auto_setup` to `false`:
+
+```xml
+<table name="messenger_message">
+    <column name="id" type="BIGINT" primaryKey="true" autoIncrement="true"/>
+    <column name="body" type="CLOB" required="true"/>
+    <column name="headers" type="LONGVARCHAR" required="true"/>
+    <column name="queue_name" type="VARCHAR" size="190" required="true"/>
+    <column name="created_at" type="DATETIME" required="true"/>
+    <column name="available_at" type="DATETIME" required="true"/>
+    <column name="delivered_at" type="DATETIME"/>
+    <index>
+        <index-column name="queue_name"/>
+        <index-column name="available_at"/>
+        <index-column name="delivered_at"/>
+        <index-column name="id"/>
+    </index>
+</table>
+```
 
 ## History and credits
 
