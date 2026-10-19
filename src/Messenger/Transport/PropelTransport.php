@@ -35,7 +35,9 @@ use Symfony\Component\Messenger\Transport\Serialization\SerializerInterface;
 use Symfony\Component\Messenger\Transport\SetupableTransportInterface;
 use Symfony\Component\Messenger\Transport\TransportInterface;
 use Throwable;
+use function array_map;
 use function ceil;
+use function implode;
 use function in_array;
 use function is_array;
 use function is_int;
@@ -43,6 +45,7 @@ use function is_numeric;
 use function is_string;
 use function json_decode;
 use function json_encode;
+use function max;
 use function method_exists;
 use function sprintf;
 use function str_contains;
@@ -124,37 +127,46 @@ final class PropelTransport implements TransportInterface, SetupableTransportInt
     }
 
     /**
-     * @return iterable<\Symfony\Component\Messenger\Envelope>
+     * Receives the messages available first and marks them delivered, in one transaction.
+     *
+     * @param int $fetchSize how many messages to receive at most
+     *
+     * @return list<\Symfony\Component\Messenger\Envelope>
      */
-    public function get(): iterable
+    public function get(int $fetchSize = 1): iterable
     {
+        $fetchSize = max(1, $fetchSize);
         $now = $this->getNow();
 
-        $row = $this->guard(function () use ($now): mixed {
+        $rows = $this->guard(function () use ($fetchSize, $now): array {
             $connection = $this->getConnection();
 
-            return $connection->transaction(function () use ($connection, $now): mixed {
-                $row = $this->fetchRow($this->fetchAvailable($connection, $now, 'ORDER BY available_at ASC LIMIT 1 ' . $this->getLockClause()));
+            return $connection->transaction(function () use ($connection, $fetchSize, $now): array {
+                $rows = $this->fetchAvailable($connection, $now, sprintf('ORDER BY available_at ASC LIMIT %d %s', $fetchSize, $this->getLockClause()))->fetchAll(PDO::FETCH_ASSOC);
 
-                if (!is_array($row)) {
-                    return null;
+                if (!$rows) {
+                    return [];
+                }
+
+                $parameters = ['now' => $now->format(self::SQL_DATE_FORMAT)];
+                $placeholders = [];
+
+                foreach ($rows as $index => $row) {
+                    $placeholders[] = ':id' . $index;
+                    $parameters['id' . $index] = (int)$row['id'];
                 }
 
                 $this->execute(
                     $connection,
-                    sprintf('UPDATE %s SET delivered_at = :now WHERE id = :id', $this->tableName),
-                    ['now' => $now->format(self::SQL_DATE_FORMAT), 'id' => (int)$row['id']],
+                    sprintf('UPDATE %s SET delivered_at = :now WHERE id IN (%s)', $this->tableName, implode(', ', $placeholders)),
+                    $parameters,
                 );
 
-                return $row;
+                return $rows;
             });
         });
 
-        if (!is_array($row)) {
-            return [];
-        }
-
-        return [$this->decodeRow($row)];
+        return array_map($this->decodeRow(...), $rows);
     }
 
     /**
