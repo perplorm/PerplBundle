@@ -4,6 +4,7 @@ namespace Propel\Bundle\PropelBundle\Tests\Functional;
 
 use Propel\Bundle\PropelBundle\ArgumentResolver\PropelValueResolver;
 use Propel\Bundle\PropelBundle\Controller\PanelController;
+use Propel\Bundle\PropelBundle\Messenger\Transport\PropelTransport;
 use Propel\Bundle\PropelBundle\Security\User\PropelUserProvider;
 use Symfony\Bundle\FrameworkBundle\Console\Application;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
@@ -21,6 +22,7 @@ class KernelTest extends KernelTestCase
 
         $this->assertInstanceOf(PropelValueResolver::class, $container->get('propel.value_resolver'));
         $this->assertInstanceOf(PropelUserProvider::class, $container->get('security.user.provider.concrete.users'));
+        $this->assertInstanceOf(PropelTransport::class, $container->get('messenger.transport.propel'));
     }
 
     public function testProfilerPanel()

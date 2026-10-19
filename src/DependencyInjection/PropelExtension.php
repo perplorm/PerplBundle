@@ -14,8 +14,10 @@ use Symfony\Component\Config\FileLocator;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Extension\Extension;
 use Symfony\Component\DependencyInjection\Loader\PhpFileLoader;
+use Symfony\Component\Messenger\Transport\TransportFactoryInterface;
 use function array_keys;
 use function count;
+use function interface_exists;
 
 /**
  * PropelExtension loads the PropelBundle configuration.
@@ -52,6 +54,10 @@ class PropelExtension extends Extension
             $loader->load('value_resolver.php');
             $loader->load('security.php');
             $loader->load('services.php');
+
+            if (interface_exists(TransportFactoryInterface::class)) {
+                $loader->load('messenger.php');
+            }
         }
     }
 

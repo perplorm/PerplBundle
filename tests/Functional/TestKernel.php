@@ -47,6 +47,9 @@ class TestKernel extends Kernel
             'http_method_override' => false,
             'php_errors' => ['log' => true],
             'profiler' => ['collect' => false],
+            'messenger' => [
+                'transports' => ['propel' => 'propel://default?queue_name=kernel'],
+            ],
         ]);
 
         $container->extension('security', [
