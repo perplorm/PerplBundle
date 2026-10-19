@@ -22,7 +22,7 @@ class PropelTransportFactoryTest extends TestCase
     public function testSupportsThePropelScheme(): void
     {
         $this->assertTrue($this->factory->supports('propel://default', []));
-        $this->assertFalse($this->factory->supports('doctrine://default', []));
+        $this->assertFalse($this->factory->supports('amqp://localhost', []));
     }
 
     /**

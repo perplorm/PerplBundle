@@ -14,10 +14,12 @@ use DateTimeImmutable;
 use DateTimeZone;
 use PDO;
 use PDOException;
+use PDOStatement;
 use Propel\Runtime\Adapter\Pdo\MysqlAdapter;
 use Propel\Runtime\Adapter\Pdo\PgsqlAdapter;
 use Propel\Runtime\Adapter\Pdo\SqliteAdapter;
 use Propel\Runtime\Connection\ConnectionInterface;
+use Propel\Runtime\Connection\StatementInterface;
 use Propel\Runtime\Exception\ExceptionInterface as PropelExceptionInterface;
 use Propel\Runtime\Propel;
 use Symfony\Component\Clock\ClockInterface;
@@ -32,7 +34,9 @@ use Symfony\Component\Messenger\Transport\Receiver\MessageCountAwareInterface;
 use Symfony\Component\Messenger\Transport\Serialization\SerializerInterface;
 use Symfony\Component\Messenger\Transport\SetupableTransportInterface;
 use Symfony\Component\Messenger\Transport\TransportInterface;
+use Throwable;
 use function ceil;
+use function in_array;
 use function is_array;
 use function is_int;
 use function is_numeric;
@@ -41,12 +45,13 @@ use function json_decode;
 use function json_encode;
 use function method_exists;
 use function sprintf;
+use function str_contains;
 use const JSON_THROW_ON_ERROR;
 
 /**
- * Stores messages in a table of a Propel connection, like Symfony's Doctrine transport does with a DBAL connection.
+ * Stores messages in a table of a Propel connection.
  *
- * The table has the columns of the Doctrine transport table. Timestamps are stored in UTC.
+ * Timestamps are stored in UTC.
  */
 final class PropelTransport implements TransportInterface, SetupableTransportInterface, ListableReceiverInterface, MessageCountAwareInterface
 {
@@ -72,7 +77,7 @@ final class PropelTransport implements TransportInterface, SetupableTransportInt
      * @param string $queueName
      * @param int $redeliverTimeout seconds after which a delivered but unacknowledged message is delivered again
      * @param string $tableName
-     * @param bool $autoSetup whether to create the table on first use
+     * @param bool $autoSetup whether to create the table when it is missing
      */
     public function __construct(
         private readonly SerializerInterface $serializer,
@@ -129,7 +134,7 @@ final class PropelTransport implements TransportInterface, SetupableTransportInt
             $connection = $this->getConnection();
 
             return $connection->transaction(function () use ($connection, $now): mixed {
-                $row = $this->fetchAvailable($connection, $now, 'ORDER BY available_at ASC LIMIT 1 ' . $this->getLockClause())->fetch(PDO::FETCH_ASSOC);
+                $row = $this->fetchRow($this->fetchAvailable($connection, $now, 'ORDER BY available_at ASC LIMIT 1 ' . $this->getLockClause()));
 
                 if (!is_array($row)) {
                     return null;
@@ -186,7 +191,7 @@ final class PropelTransport implements TransportInterface, SetupableTransportInt
                 $this->getAvailableParameters($now),
             );
 
-            return (int)$statement->fetchColumn();
+            return (int)$this->fetchValue($statement);
         });
     }
 
@@ -218,11 +223,11 @@ final class PropelTransport implements TransportInterface, SetupableTransportInt
             return null;
         }
 
-        $row = $this->guard(fn (): mixed => $this->execute(
+        $row = $this->guard(fn (): mixed => $this->fetchRow($this->execute(
             $this->getConnection(),
             sprintf('SELECT id, body, headers FROM %s WHERE id = :id AND queue_name = :queue', $this->tableName),
             ['id' => (int)$id, 'queue' => $this->queueName],
-        )->fetch(PDO::FETCH_ASSOC));
+        )));
 
         if (!is_array($row)) {
             return null;
@@ -272,7 +277,9 @@ final class PropelTransport implements TransportInterface, SetupableTransportInt
     }
 
     /**
-     * Runs a database operation, turning its failures into transport exceptions and creating the table first if configured.
+     * Runs a database operation, turning its failures into transport exceptions.
+     *
+     * When the operation fails because the table is missing, it creates the table and retries once.
      *
      * @template T
      *
@@ -284,23 +291,38 @@ final class PropelTransport implements TransportInterface, SetupableTransportInt
      */
     private function guard(callable $operation): mixed
     {
-        if ($this->autoSetup && !$this->setUp) {
-            $this->setUp = true;
-
-            try {
-                $this->setup();
-            } catch (TransportException $exception) {
-                $this->setUp = false;
-
-                throw $exception;
-            }
-        }
-
         try {
             return $operation();
         } catch (PDOException | PropelExceptionInterface $exception) {
+            if ($this->autoSetup && !$this->setUp && $this->isTableMissing($exception)) {
+                $this->setup();
+
+                return $this->guard($operation);
+            }
+
             throw new TransportException($exception->getMessage(), 0, $exception);
         }
+    }
+
+    /**
+     * @param \Throwable $exception
+     *
+     * @return bool
+     */
+    private function isTableMissing(Throwable $exception): bool
+    {
+        for (; $exception !== null; $exception = $exception->getPrevious()) {
+            if (!$exception instanceof PDOException) {
+                continue;
+            }
+
+            // MySQL and PostgreSQL report a missing table by SQLSTATE, SQLite with a general error
+            if (in_array($exception->errorInfo[0] ?? $exception->getCode(), ['42S02', '42P01'], true) || str_contains($exception->getMessage(), 'no such table')) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
@@ -343,6 +365,36 @@ final class PropelTransport implements TransportInterface, SetupableTransportInt
         $statement->execute();
 
         return $statement;
+    }
+
+    /**
+     * Fetches the first row and releases the statement, which otherwise keeps SQLite from altering the table.
+     *
+     * @param \PDOStatement|\Propel\Runtime\Connection\StatementInterface $statement
+     *
+     * @return mixed
+     */
+    private function fetchRow(PDOStatement|StatementInterface $statement): mixed
+    {
+        $row = $statement->fetch(PDO::FETCH_ASSOC);
+        $statement->closeCursor();
+
+        return $row;
+    }
+
+    /**
+     * Fetches the first value and releases the statement, which otherwise keeps SQLite from altering the table.
+     *
+     * @param \PDOStatement|\Propel\Runtime\Connection\StatementInterface $statement
+     *
+     * @return mixed
+     */
+    private function fetchValue(PDOStatement|StatementInterface $statement): mixed
+    {
+        $value = $statement->fetchColumn();
+        $statement->closeCursor();
+
+        return $value;
     }
 
     /**

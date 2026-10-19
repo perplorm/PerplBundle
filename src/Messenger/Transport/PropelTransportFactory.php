@@ -38,7 +38,7 @@ use const PHP_URL_QUERY;
 /**
  * Creates Propel transports from DSNs like "propel://default?queue_name=failed".
  *
- * The host names the Propel connection. The options mirror those of Symfony's Doctrine transport.
+ * The host names the Propel connection; the query parameters are the options.
  *
  * @implements \Symfony\Component\Messenger\Transport\TransportFactoryInterface<\Propel\Bundle\PropelBundle\Messenger\Transport\PropelTransport>
  */

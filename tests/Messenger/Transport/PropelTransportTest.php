@@ -49,7 +49,7 @@ class PropelTransportTest extends KernelTestCase
         $this->assertSame(
             $this->clock->now()->setTimezone(new DateTimeZone('UTC'))->format('Y-m-d H:i:s'),
             $this->fetchColumn('SELECT created_at FROM messenger_message ORDER BY available_at ASC LIMIT 1'),
-            'Should store timestamps in UTC, like the Doctrine transport'
+            'Should store timestamps in UTC, whatever the default timezone'
         );
 
         $first = $this->getSingleEnvelope();
@@ -161,14 +161,28 @@ class PropelTransportTest extends KernelTestCase
         $this->assertSame('1', $this->fetchColumn('SELECT COUNT(*) FROM sqlite_master WHERE type = \'index\' AND tbl_name = \'manual_message\' AND name = \'manual_message_queue_idx\''), 'Should create the index');
     }
 
-    public function testAutoSetupCreatesTheTableOnFirstUse(): void
+    public function testAutoSetupCreatesTheTableWhenItIsMissing(): void
     {
         $this->assertSame('0', $this->fetchColumn('SELECT COUNT(*) FROM sqlite_master WHERE type = \'table\' AND name = \'auto_message\''));
 
         $transport = $this->createTransport('auto_message', true);
-        $this->assertSame(0, $transport->getMessageCount());
+        $this->assertSame(0, $transport->getMessageCount(), 'Should retry the query after creating the table');
 
-        $this->assertSame('1', $this->fetchColumn('SELECT COUNT(*) FROM sqlite_master WHERE type = \'table\' AND name = \'auto_message\''), 'Should create the table on first use');
+        $this->assertSame('1', $this->fetchColumn('SELECT COUNT(*) FROM sqlite_master WHERE type = \'table\' AND name = \'auto_message\''), 'Should create the table when a query finds it missing');
+
+        $this->getConnection()->exec('DROP TABLE auto_message');
+
+        $this->expectException(TransportException::class);
+        $transport->getMessageCount();
+    }
+
+    public function testAutoSetupLeavesAnExistingTableAlone(): void
+    {
+        $this->transport->setup();
+        $this->transport->send(new Envelope(new TestMessage('content')));
+
+        $other = $this->createTransport('messenger_message', true);
+        $this->assertSame(1, $other->getMessageCount(), 'Should use the existing table and its messages');
     }
 
     public function testUnknownConnectionsFailWithATransportException(): void
