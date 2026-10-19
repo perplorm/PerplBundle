@@ -3,7 +3,7 @@ Changelog
 
 All notable changes are documented here. The project follows [Semantic Versioning](https://semver.org): minor releases add features and deprecations, major releases remove them.
 
-## Unreleased
+## 1.0.0-RC3 (2026-10-19)
 
 * Register each connection as a service, `propel.<name>_connection`, with `propel.connection` for the default one, and autowire `ConnectionInterface` arguments to them.
 * `runtime.defaultConnection` is always filled in: the configured one, else the first connection. The `propel.dbal.default_connection` parameter the commands use follows the configured one too, and still falls back to the connection named `default` when there is one.
