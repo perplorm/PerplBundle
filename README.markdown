@@ -149,6 +149,10 @@ The table is created when it turns out to be missing, or by `bin/console messeng
 </table>
 ```
 
+### Long-running processes
+
+Propel keeps every loaded object in an instance pool, which is what you want within a request or a message, but not across them. The bundle empties the pools of all configured connections whenever Symfony resets its services: between the messages of a Messenger worker, and between requests under runtimes such as FrankenPHP or RoadRunner. Pooling stays enabled.
+
 ## History and credits
 
 PerplBundle continues [PropelBundle](https://github.com/propelorm/PropelBundle), started by William Durand in 2010 and developed by many contributors since, among them Kévin Gomez, Marc J. Schmidt, Toni Uebernickel, Gregor Harlan and Moritz Schroeder. Its Symfony 7 support comes from the [SkyFoxvn fork](https://github.com/SkyFoxvn/PropelBundle). The form, security and translation integration started out in Symfony's Propel1 bridge, which is why those files carry Symfony's copyright notice.

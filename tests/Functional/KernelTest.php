@@ -41,6 +41,14 @@ class KernelTest extends KernelTestCase
         $this->assertSame($container->get('propel.other_connection'), $consumer->otherConnection);
     }
 
+    public function testResetWithoutDatabaseMaps()
+    {
+        // no loader script registered a database map for this kernel
+        static::getContainer()->get('services_resetter')->reset();
+
+        $this->assertTrue(true);
+    }
+
     public function testProfilerPanel()
     {
         $response = static::getContainer()->get(PanelController::class)->configurationAction();

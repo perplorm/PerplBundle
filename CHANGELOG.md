@@ -8,6 +8,7 @@ All notable changes are documented here. The project follows [Semantic Versionin
 * Register each connection as a service, `propel.<name>_connection`, with `propel.connection` for the default one, and autowire `ConnectionInterface` arguments to them.
 * The `propel.dbal.default_connection` parameter now holds the configured default connection instead of always `default`.
 * Let the Messenger transport receive several messages per query, as asked by `messenger:consume --fetch-size` in Symfony 8.1+.
+* Empty the instance pools of all connections when Symfony resets its services, so Messenger workers and worker runtimes do not keep the objects of a previous message or request.
 
 ## 1.0.0-RC2 (2026-10-19)
 
