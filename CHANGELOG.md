@@ -3,7 +3,7 @@ Changelog
 
 All notable changes are documented here. The project follows [Semantic Versioning](https://semver.org): minor releases add features and deprecations, major releases remove them.
 
-## Unreleased
+## 1.0.0-RC2 (2026-10-19)
 
 * Add a Symfony Messenger transport, `propel://<connection>`, storing messages in a table of a Propel connection.
 
