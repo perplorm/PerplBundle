@@ -10,14 +10,19 @@
 
 namespace Propel\Bundle\PropelBundle\DependencyInjection;
 
+use Propel\Runtime\Connection\ConnectionInterface;
 use Symfony\Component\Config\FileLocator;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
+use Symfony\Component\DependencyInjection\Definition;
 use Symfony\Component\DependencyInjection\Extension\Extension;
 use Symfony\Component\DependencyInjection\Loader\PhpFileLoader;
+use Symfony\Component\DependencyInjection\Reference;
 use Symfony\Component\Messenger\Transport\TransportFactoryInterface;
+use function array_key_first;
 use function array_keys;
 use function count;
 use function interface_exists;
+use function sprintf;
 
 /**
  * PropelExtension loads the PropelBundle configuration.
@@ -34,18 +39,19 @@ class PropelExtension extends Extension
         $configuration = $this->getConfiguration($configs, $container);
         $config = $this->processConfiguration($configuration, $configs);
 
-        if (count($config['database']['connections']) === 1) {
-            $defaultConnection = array_keys($config['database']['connections'])[0];
-            if (!isset($config['runtime']['defaultConnection'])) {
-                $config['runtime']['defaultConnection'] = $defaultConnection;
-            }
-            if (!isset($config['generator']['defaultConnection'])) {
-                $config['generator']['defaultConnection'] = $defaultConnection;
-            }
+        // The first connection is the default one unless the configuration names another
+        $defaultConnection = !empty($config['runtime']['defaultConnection'])
+            ? $config['runtime']['defaultConnection']
+            : array_key_first($config['database']['connections']);
+        $config['runtime']['defaultConnection'] = $defaultConnection;
+
+        if (count($config['database']['connections']) === 1 && !isset($config['generator']['defaultConnection'])) {
+            $config['generator']['defaultConnection'] = $defaultConnection;
         }
 
         $container->setParameter('propel.logging', $config['runtime']['logging']);
         $container->setParameter('propel.configuration', $config);
+        $container->setParameter('propel.dbal.default_connection', $defaultConnection);
 
         // Load services
         if (!$container->hasDefinition('propel')) {
@@ -59,6 +65,33 @@ class PropelExtension extends Extension
                 $loader->load('messenger.php');
             }
         }
+
+        $this->loadConnections(array_keys($config['database']['connections']), $defaultConnection, $container);
+    }
+
+    /**
+     * Registers the write connection of each configured connection as a service, `propel.<name>_connection`, with
+     * `propel.connection` for the default connection. Autowiring resolves `ConnectionInterface $<name>Connection` to
+     * the named connection and a plain `ConnectionInterface` argument to the default one.
+     *
+     * @param array<string> $names
+     * @param string $defaultConnection
+     * @param \Symfony\Component\DependencyInjection\ContainerBuilder $container
+     *
+     * @return void
+     */
+    protected function loadConnections(array $names, string $defaultConnection, ContainerBuilder $container): void
+    {
+        foreach ($names as $name) {
+            $id = sprintf('propel.%s_connection', $name);
+
+            $container->setDefinition($id, (new Definition(ConnectionInterface::class, [$name]))
+                ->setFactory([new Reference('propel.service_container'), 'getWriteConnection'])
+                ->setPublic(true));
+            $container->registerAliasForArgument($id, ConnectionInterface::class, sprintf('%s connection', $name));
+        }
+
+        $container->setAlias('propel.connection', sprintf('propel.%s_connection', $defaultConnection))->setPublic(true);
     }
 
     /**

@@ -65,6 +65,7 @@ Schemas are read from `config/*schema.xml`, from `propel/schema.xml` (see `prope
 * Creating and dropping databases;
 * Integration with the Form, Security and Validator components;
 * Resolving model controller arguments from route parameters;
+* Injecting connections into services;
 * Storing Symfony Messenger messages in a Propel connection.
 
 ### Controller arguments
@@ -89,6 +90,20 @@ public function books(#[MapModel(mapping: ['author_id' => 'id'], with: 'Book')] 
 ```
 
 A nullable argument receives `null` when nothing is found, otherwise a 404 is returned.
+
+### Connection services
+
+Each configured connection is a service, `propel.<name>_connection`, holding its write connection, and `propel.connection` is the default one (`runtime.defaultConnection`, or the first connection). They are the objects Propel's service container hands out, created when first used. Autowiring injects the default connection for a `ConnectionInterface` argument, and a named connection for an argument named after it:
+
+```php
+use Propel\Runtime\Connection\ConnectionInterface;
+
+public function __construct(
+    private ConnectionInterface $connection,
+    private ConnectionInterface $reportingConnection,
+) {
+}
+```
 
 ### Messenger transport
 

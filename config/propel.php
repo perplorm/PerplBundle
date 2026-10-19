@@ -11,10 +11,12 @@ use Propel\Bundle\PropelBundle\Form\TypeGuesser;
 use Propel\Bundle\PropelBundle\Logger\PropelLogger;
 use Propel\Bundle\PropelBundle\Service\SchemaLocator;
 use Propel\Bundle\PropelBundle\Twig\Extension\SyntaxExtension;
+use Propel\Runtime\Connection\ConnectionInterface;
+use Propel\Runtime\Propel;
+use Propel\Runtime\ServiceContainer\ServiceContainerInterface;
 
 return static function (ContainerConfigurator $container): void {
     $container->parameters()
-        ->set('propel.dbal.default_connection', 'default')
         ->set('propel.schema_locator.class', SchemaLocator::class)
         ->set('propel.data_collector.class', PropelDataCollector::class)
         ->set('propel.logger.class', PropelLogger::class)
@@ -26,6 +28,14 @@ return static function (ContainerConfigurator $container): void {
         ->set('propel.loader.xml.class', XmlDataLoader::class);
 
     $container->services()
+        // Propel's own service container, which the bundle configures when it boots. The connection services are
+        // created from it, so they are only opened when used.
+        ->set('propel.service_container', ServiceContainerInterface::class)
+            ->factory([Propel::class, 'getServiceContainer'])
+
+        // The write connection of the default connection, see PropelExtension for the connection services
+        ->alias(ConnectionInterface::class, 'propel.connection')
+
         ->set('propel.schema_locator', '%propel.schema_locator.class%')
             ->public()
             ->args([service('service_container'), service('file_locator'), '%propel.configuration%'])

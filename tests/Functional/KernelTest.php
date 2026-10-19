@@ -6,6 +6,7 @@ use Propel\Bundle\PropelBundle\ArgumentResolver\PropelValueResolver;
 use Propel\Bundle\PropelBundle\Controller\PanelController;
 use Propel\Bundle\PropelBundle\Messenger\Transport\PropelTransport;
 use Propel\Bundle\PropelBundle\Security\User\PropelUserProvider;
+use Propel\Runtime\Propel;
 use Symfony\Bundle\FrameworkBundle\Console\Application;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 
@@ -23,6 +24,21 @@ class KernelTest extends KernelTestCase
         $this->assertInstanceOf(PropelValueResolver::class, $container->get('propel.value_resolver'));
         $this->assertInstanceOf(PropelUserProvider::class, $container->get('security.user.provider.concrete.users'));
         $this->assertInstanceOf(PropelTransport::class, $container->get('messenger.transport.propel'));
+    }
+
+    public function testConnections()
+    {
+        $container = static::getContainer();
+        $serviceContainer = Propel::getServiceContainer();
+
+        $this->assertSame($serviceContainer->getWriteConnection('default'), $container->get('propel.connection'));
+        $this->assertSame($serviceContainer->getWriteConnection('default'), $container->get('propel.default_connection'));
+        $this->assertSame($serviceContainer->getWriteConnection('other'), $container->get('propel.other_connection'));
+        $this->assertNotSame($container->get('propel.default_connection'), $container->get('propel.other_connection'));
+
+        $consumer = $container->get(ConnectionConsumer::class);
+        $this->assertSame($container->get('propel.connection'), $consumer->connection);
+        $this->assertSame($container->get('propel.other_connection'), $consumer->otherConnection);
     }
 
     public function testProfilerPanel()
