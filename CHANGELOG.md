@@ -3,6 +3,12 @@ Changelog
 
 All notable changes are documented here. The project follows [Semantic Versioning](https://semver.org): minor releases add features and deprecations, major releases remove them.
 
+## 1.0.0-RC4 (2026-10-19)
+
+* `propel:form:generate` writes form types that load on Symfony 7 and 8: their `buildForm()` and `configureOptions()` methods declare the `: void` return type, and they no longer set the obsolete `name` option.
+* Require the `ext-pdo` and `ext-simplexml` extensions at runtime, and suggest `symfony/form`, `symfony/validator`, `symfony/twig-bundle` and `symfony/web-profiler-bundle` for the optional integrations.
+* Log a warning on the application logger when the query logging cannot be enabled at boot, as when `runtime.logging` is on and a connection cannot be opened, instead of silently ignoring it. Errors while configuring the connections are no longer swallowed.
+
 ## 1.0.0-RC3 (2026-10-19)
 
 * Register each connection as a service, `propel.<name>_connection`, with `propel.connection` for the default one, and autowire `ConnectionInterface` arguments to them.

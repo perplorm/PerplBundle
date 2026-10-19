@@ -30,6 +30,7 @@ Keep requiring Propel2 from its `master` branch, or switch to Perpl (see below).
 
 * The SensioFrameworkExtraBundle ParamConverter (`propel.converter.propel.orm`) is replaced by a controller argument value resolver, as SensioFrameworkExtraBundle does not support Symfony 7. Mark the arguments to resolve with `#[MapModel]`; arguments with `propel_converter` route options are still resolved too. The resolver ignores all other arguments, so value resolvers of your own keep working.
 * `PropelUserProvider::supportsClass()` also accepts subclasses of the user class.
+* The bundle no longer swallows every exception thrown while it boots. An error while configuring the connections now surfaces; when the query logging (`runtime.logging`) cannot open a connection, as before the `propel:*` commands create the database, the bundle boots and logs a warning on the application logger.
 
 ## Deprecated
 
