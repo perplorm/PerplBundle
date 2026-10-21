@@ -3,7 +3,7 @@ Changelog
 
 All notable changes are documented here. The project follows [Semantic Versioning](https://semver.org): minor releases add features and deprecations, major releases remove them.
 
-## 1.0.0-RC5 (unreleased)
+## 1.0.0-RC5 (2026-10-21)
 
 * `cache:clear` no longer fails when the cached container was compiled by an older version of the bundle, as happens when releases share a cache directory.
 
