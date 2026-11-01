@@ -46,7 +46,7 @@
     },
     "require-dev": {
         "perplorm/perpl": "^2.10",
-        "phpunit/phpunit": "^11.5||^12.0",
+        "phpunit/phpunit": "^13.4.5",
         "symfony/form": "^7.4||^8.0",
         "fakerphp/faker": "^1.23",
         "mikey179/vfsstream": "^1.6",
