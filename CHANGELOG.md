@@ -6,6 +6,7 @@ All notable changes are documented here. The project follows [Semantic Versionin
 ## 1.0.0-RC6 (unreleased)
 
 * Accept `ATTR_TIMEOUT` among a connection's `options`, to set the timeout PDO applies when connecting.
+* Accept `MYSQL_ATTR_SSL_VERIFY_SERVER_CERT` among a connection's `options`, to turn off the verification of the MySQL server certificate.
 
 ## 1.0.0-RC5 (2026-10-21)
 

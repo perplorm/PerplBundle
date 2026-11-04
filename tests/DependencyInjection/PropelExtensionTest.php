@@ -36,7 +36,7 @@ class PropelExtensionTest extends TestCase
                         'dsn' => 'sqlite::memory:',
                         'user' => '',
                         'password' => '',
-                        'options' => ['ATTR_TIMEOUT' => 3],
+                        'options' => ['ATTR_TIMEOUT' => 3, 'MYSQL_ATTR_SSL_VERIFY_SERVER_CERT' => false],
                     ],
                 ],
             ],
@@ -65,6 +65,7 @@ class PropelExtensionTest extends TestCase
         $this->assertSame('default', $container->getParameter('propel.dbal.default_connection'));
         $this->assertSame('sqlite::memory:', $container->getParameter('propel.configuration')['database']['connections']['default']['dsn']);
         $this->assertSame(3, $container->getParameter('propel.configuration')['database']['connections']['default']['options']['ATTR_TIMEOUT']);
+        $this->assertFalse($container->getParameter('propel.configuration')['database']['connections']['default']['options']['MYSQL_ATTR_SSL_VERIFY_SERVER_CERT']);
     }
 
     public function testConnectionServices(): void
