@@ -196,6 +196,7 @@ class Configuration extends PropelConfiguration
                                         ->addDefaultsIfNotSet()
                                         ->children()
                                             ->booleanNode('ATTR_PERSISTENT')->defaultFalse()->end()
+                                            ->integerNode('ATTR_TIMEOUT')->min(1)->end()
                                             ->scalarNode('MYSQL_ATTR_SSL_CA')->end()
                                             ->scalarNode('MYSQL_ATTR_SSL_CERT')->end()
                                             ->scalarNode('MYSQL_ATTR_SSL_KEY')->end()
