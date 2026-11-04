@@ -41,7 +41,10 @@ class CommandTestKernel extends TestKernel
         $container->extension('propel', [
             'database' => [
                 'connections' => [
-                    'default' => ['dsn' => 'sqlite:'.self::getDatabaseFile($this->projectDir)],
+                    'default' => [
+                        'dsn' => 'sqlite:'.self::getDatabaseFile($this->projectDir),
+                        'options' => ['ATTR_TIMEOUT' => 3],
+                    ],
                 ],
             ],
         ]);

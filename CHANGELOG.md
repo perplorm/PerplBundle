@@ -3,6 +3,10 @@ Changelog
 
 All notable changes are documented here. The project follows [Semantic Versioning](https://semver.org): minor releases add features and deprecations, major releases remove them.
 
+## 1.0.0-RC7 (unreleased)
+
+* The `propel:*` commands no longer fail when a connection sets `ATTR_TIMEOUT` among its `options`.
+
 ## 1.0.0-RC6 (2026-11-04)
 
 * Accept `ATTR_TIMEOUT` among a connection's `options`, to set the timeout PDO applies when connecting.

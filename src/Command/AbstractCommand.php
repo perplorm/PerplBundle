@@ -23,6 +23,7 @@ use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\Filesystem\Filesystem;
 use Symfony\Component\HttpKernel\Bundle\BundleInterface;
 use Symfony\Component\HttpKernel\KernelInterface;
+use function array_keys;
 use function array_merge;
 use function array_unshift;
 use function explode;
@@ -282,6 +283,11 @@ abstract class AbstractCommand extends Command
         //needed because because Propel2's configuration tree is a bit different
         //propel.runtime.logging is PropelBundle feature only.
         unset($propelConfig['runtime']['logging']);
+
+        //ATTR_TIMEOUT is not in Perpl's generator configuration tree.
+        foreach (array_keys($propelConfig['database']['connections']) as $name) {
+            unset($propelConfig['database']['connections'][$name]['options']['ATTR_TIMEOUT']);
+        }
 
         $config = [
             'propel' => $propelConfig,
