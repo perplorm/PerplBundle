@@ -3,7 +3,7 @@ Changelog
 
 All notable changes are documented here. The project follows [Semantic Versioning](https://semver.org): minor releases add features and deprecations, major releases remove them.
 
-## 1.0.0-RC6 (unreleased)
+## 1.0.0-RC6 (2026-11-04)
 
 * Accept `ATTR_TIMEOUT` among a connection's `options`, to set the timeout PDO applies when connecting.
 * Accept `MYSQL_ATTR_SSL_VERIFY_SERVER_CERT` among a connection's `options`, to turn off the verification of the MySQL server certificate.
