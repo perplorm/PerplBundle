@@ -3,7 +3,7 @@ Changelog
 
 All notable changes are documented here. The project follows [Semantic Versioning](https://semver.org): minor releases add features and deprecations, major releases remove them.
 
-## 1.0.0-RC7 (unreleased)
+## 1.0.0-RC7 (2026-11-04)
 
 * The `propel:*` commands no longer fail when a connection sets `ATTR_TIMEOUT` among its `options`.
 
