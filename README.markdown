@@ -60,9 +60,11 @@ Schemas are read from `config/*schema.xml`, from `propel/schema.xml` (see `prope
 * Runtime initialization through the bundle configuration;
 * Migrations;
 * Reverse engineering from an existing database;
-* Integration with the Symfony Profiler;
-* Loading SQL, YAML and XML fixtures;
 * Creating and dropping databases;
+* Loading SQL, YAML and XML fixtures, and dumping data to YAML fixtures;
+* Generation of form types from models (`propel:form:generate`) and of Graphviz diagrams from schemas (`propel:graphviz:generate`);
+* Query logging and integration with the Symfony Profiler;
+* `format_sql` and `format_memory` Twig filters;
 * Integration with the Form, Security and Validator components;
 * Resolving model controller arguments from route parameters;
 * Injecting connections into services;
@@ -89,7 +91,16 @@ The attribute also configures the lookup:
 public function books(#[MapModel(mapping: ['author_id' => 'id'], with: 'Book')] Author $author): Response
 ```
 
+| Option | Description |
+|---|---|
+| `mapping` | Route parameters and the columns to look up by (`['route_param' => 'column']`), instead of all route parameters. |
+| `exclude` | Route parameters to leave out of the lookup, when there is no `mapping`. |
+| `with` | Relations to join and populate: a name, or a name and join type (`['Book', 'left join']`). Inner join by default. |
+| `queryMethod` | A method of the Query class that receives the request attributes and returns the object, replacing the lookup. |
+
 A nullable argument receives `null` when nothing is found, otherwise a 404 is returned.
+
+The `propel_converter` route options of `propel/propel-bundle` (`mapping`, `exclude`, `with`, `query_method`) are still honoured.
 
 ### Connection services
 
@@ -105,9 +116,25 @@ public function __construct(
 }
 ```
 
+### Query logging
+
+With `runtime.logging` on (the default when `kernel.debug` is), queries are logged to the `propel` channel and timed in the Stopwatch. The Symfony Profiler lists them in a Propel panel, with an `EXPLAIN` per query and the bundle configuration. Logging opens the connections when the kernel boots.
+
 ### User provider
 
-The `propel` user provider loads users through the Query class of the configured model. Symfony rehashes a password on login when the hashing configuration changed, and the provider hands that to the Query class when it implements `PasswordUpgraderInterface`, so the upgrade lives next to the other queries of the model:
+The `propel` user provider loads users through the Query class of the configured model, by the given `property` (`username` by default):
+
+```yaml
+# config/packages/security.yaml
+security:
+    providers:
+        app_users:
+            propel:
+                class: App\Model\User
+                property: email
+```
+
+Symfony rehashes a password on login when the hashing configuration changed, and the provider hands that to the Query class when it implements `PasswordUpgraderInterface`, so the upgrade lives next to the other queries of the model:
 
 ```php
 use Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface;
